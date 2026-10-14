@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compliance-rag-assistant"
+version = "0.1.0"
+description = "Source-faithful, heading-aware Markdown ingestion for compliance RAG"
+requires-python = ">=3.11"
+dependencies = [
+  "markdown-it-py>=4,<5",
+  "langchain-core>=1,<2",
+  "pydantic>=2.12,<3",
+  "fastapi>=0.119,<1",
+  "uvicorn>=0.37,<1",
+]
+
+[project.scripts]
+compliance-rag = "compliance_rag.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["compliance_rag*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

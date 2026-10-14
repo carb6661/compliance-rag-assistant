@@ -1,0 +1,7 @@
+markdown-it-py>=4,<5
+langchain-core>=1,<2
+pydantic>=2.12,<3
+fastapi>=0.119,<1
+uvicorn>=0.37,<1
+pytest>=8,<10
+httpx>=0.28,<1

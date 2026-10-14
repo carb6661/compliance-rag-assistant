@@ -1,0 +1,11 @@
+{
+  "standards": {
+    "教学等保结构样例": {
+      "name": "教学等保结构样例",
+      "code": "DEMO",
+      "edition": "synthetic-v1",
+      "synthetic": true
+    }
+  },
+  "max_chars": 1200
+}
