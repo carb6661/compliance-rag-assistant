@@ -1,0 +1,22 @@
+[
+  {"id":"v2-l3-retention","question":"进入记录保留多久？","edition":"v2","level":"第三级","class":"安全物理环境","expected":"180天"},
+  {"id":"v2-l2-retention","question":"进入记录保留多久？","edition":"v2","level":"第二级","class":"安全物理环境","expected":"60天"},
+  {"id":"v1-l3-retention","question":"进入记录保留多久？","edition":"v1","level":"第三级","class":"安全物理环境","expected":"90天"},
+  {"id":"v1-l2-retention","question":"进入记录保留多久？","edition":"v1","level":"第二级","class":"安全物理环境","expected":"30天"},
+  {"id":"v2-l3-restore","question":"备份恢复演练多久一次？","edition":"v2","level":"第三级","class":"安全计算环境","expected":"每周"},
+  {"id":"v2-l2-restore","question":"备份恢复演练多久一次？","edition":"v2","level":"第二级","class":"安全计算环境","expected":"每月"},
+  {"id":"v1-l2-restore","question":"备份恢复演练多久一次？","edition":"v1","level":"第二级","class":"安全计算环境","expected":"每季度"},
+  {"id":"v1-l3-restore","question":"备份恢复演练多久一次？","edition":"v1","level":"第三级","class":"安全计算环境","expected":"每月"},
+  {"id":"v2-l3-contact","question":"设备异常应当向谁报备？","edition":"v2","level":"第三级","class":"安全运维管理","expected":"值班应急负责人"},
+  {"id":"v1-l3-contact","question":"设备异常应当向谁报备？","edition":"v1","level":"第三级","class":"安全运维管理","expected":"应急负责人"},
+  {"id":"synonym-integrity","question":"灾后还原的数据如何验证完整性？","edition":"v2","level":"第三级","class":null,"expected":"文件摘要"},
+  {"id":"synonym-entry","question":"出入机房的登记需要存多久？","edition":"v2","level":"第三级","class":null,"expected":"180天"},
+  {"id":"synonym-recovery","question":"找回丢失文件后怎样核对恢复结果？","edition":"v2","level":"第二级","class":null,"expected":"文件摘要"},
+  {"id":"synonym-contact","question":"线上设备发生故障应该通知哪个负责人？","edition":"v2","level":"第三级","class":null,"expected":"值班应急负责人"},
+  {"id":"broad-retention","question":"进入记录保留多久？","edition":"v2","level":"第三级","class":null,"expected":"180天"},
+  {"id":"broad-restore","question":"备份恢复演练多久一次？","edition":"v2","level":"第三级","class":null,"expected":"每周"},
+  {"id":"related-unsupported","question":"进入记录必须使用哪种加密算法？","edition":"v2","level":"第三级","class":"安全物理环境","expected":null},
+  {"id":"unknown-topic","question":"火星飞船返航轨道参数是多少？","edition":"v2","level":"第三级","class":null,"expected":null},
+  {"id":"unknown-edition","question":"进入记录保留多久？","edition":"v9","level":"第三级","class":null,"expected":null},
+  {"id":"unknown-level","question":"进入记录保留多久？","edition":"v2","level":"第一级","class":null,"expected":null}
+]

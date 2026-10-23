@@ -3,11 +3,45 @@
 [![Tests](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**第一阶段：可溯源的 Markdown 文档入库，而不是自动测评判定。**
+**0.2：可持久更新、按版本/级别检索、带精确引用的合规资料证据问答。不是自动测评判定。**
 
-使用 Python、FastAPI 和 LangChain Document，将合法持有的标准 Markdown 转换为可用于 RAG 的结构化块。按真实标题层级继承标准、级别和安全类；支持目录批处理、严格入库检查、精确源码区间、JSONL 导出、本地 API，以及结构修复前后实验。
+使用 Python、FastAPI、SQLite 和 LangChain Document，在原有标题层级入库上补齐资料导入、持久查询、更新/删除、范围过滤、BM25/真实中文向量/RRF检索、证据回答、引用校验与追踪。适合安全工程师先定位资料依据、再人工核验的私有本地工作流。
 
-不需要大模型、向量数据库或 API key。解析过程不执行文档指令、不渲染 HTML、不抓取链接、不读取 API 请求指定的服务器文件。默认样本全部为原创合成内容，**不是等保标准条文，不能作为测评依据**。
+默认BM25和原文抽取无需模型密钥；可选本地512维中文BGE和服务端环境变量配置的OpenAI兼容生成服务。真实BGE已运行，真实LLM服务尚未配置联调，不将适配层Mock当成真实模型结果。解析过程不执行文档指令、不渲染HTML、不抓取链接、不读取API请求指定的服务器文件。公开样本均原创合成，**不是等保标准条文，不能作为测评依据**。
+
+## 本次做深了什么
+
+- 入库不再结束于JSONL：SQLite保存来源、规范化原文、块与可选向量；同源事务替换和级联删除，重启可查。
+- 不靠大模型猜适用范围：标准编号、版本和安全级别必填，先过滤再计算检索分数。
+- 不盲信生成答案：模型只选连续原文，服务端核对citation ID/quote/区间，生成期间知识变更则拒绝旧答案。
+- 不用随机向量冒充语义：真实运行BGE-small-zh ONNX，模型及分词器摘要绑定索引，超512 token拒绝静默截断。
+- 不只展示成功：20问开发集保留“相关但缺少事实”的拒答失败，混合检索也没有被包装成必然优于Dense。
+
+详细入口：[实际运行与模型接入](docs/RAG_GUIDE.md) · [项目背景/设计/难点/亮点/简历模板](docs/PROJECT_STORY.md) · [真实前后评测](examples/evaluation/semantic-after.json) · [验证记录](docs/VALIDATION.md)
+
+### 先验证一个完整业务流程
+
+安装下面第1节的基础依赖后：
+
+```bash
+python -X utf8 -m compliance_rag.rag_cli evaluate
+python -X utf8 -m compliance_rag.live_smoke
+python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
+```
+
+另开终端：`python -X utf8 examples/rag_api_client.py`，实际导入两个版本、查询v2第三级进入记录，返回含“180天”的原文与来源区间。数字只是虚构练习设定，不是真实标准。真实向量与LLM接入命令见上方使用指南。
+
+### 已测结果与没有解决的问题
+
+在12块原创资料、20个手写开发问题上（16可回答、4不可回答；非独立测试集）：
+
+| 模式 | Hit@3（16题） | MRR@3 | 不可回答拒答（4题） |
+| --- | --- | --- | --- |
+| BM25 | 16/16 | 0.96875 | 3/4 |
+| BGE Dense（真实本地模型） | 16/16 | 1.0 | 3/4 |
+| RRF Hybrid | 16/16 | 0.96875 | 3/4 |
+
+过高0.72阈值曾使Dense仅命中1/16，调整开发阈值0.50后恢复；[修正前记录](examples/evaluation/semantic-before.json)保留原始分数。未过滤的BM25基线有38个越版本/级别hit，正确过滤后为0。以上不是生产准确率、真实LLM答案质量或“消除幻觉”的证明；拒答仍有反例，详见项目复盘。
 
 ## 为什么有实用价值
 
@@ -141,7 +175,7 @@ texts = [embedding_text(doc) for doc in documents]
 metadatas = [doc.metadata for doc in documents]
 ```
 
-embedding_text 显式加入标准、版本和标题路径，避免向量化正文时丢失父标题。它不修改原始 page_content。实际嵌入模型、向量库和字段过滤语法由你的系统实现，本项目尚未生成向量或语义问答。
+embedding_text 显式加入标准、版本和标题路径，避免外接向量化时丢失父标题。它不修改原始 page_content。0.2另提供持久知识库、本地BGE及证据选摘流程，见 [RAG使用指南](docs/RAG_GUIDE.md)；本节仍保留第一阶段对外Document接口。
 
 不接任何外部模型也可验证元数据过滤：
 
@@ -161,7 +195,7 @@ python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
 - POST /v1/parse：接收 text、source_name、config 和 mode（strict/partial）。
 - GET /docs：接口文档；无需前端或付费服务。
 
-另开终端：
+另开终端（原解析API兼容示例）：
 
 ```bash
 python examples/api_client.py
@@ -169,7 +203,7 @@ python examples/api_client.py
 
 API 使用同一解析模块。严格模式有结构错误返回 422 且 documents=[]；显式 partial 模式返回 200/status=partial，调用方必须检查 status，不能只检查 HTTP 成功。请求模式错误返回 422，非 JSON 返回 415，超过 2 MiB 请求体返回 413；文本本身还限制 UTF-8 1 MiB。
 
-API 不接受文件路径、远程 URL 或任意上传保存位置，不提供抓取功能。来源名称仅作相对标签，不会用于读文件。**首版没有用户鉴权、租户隔离、并发配额或持久化；只绑定回环地址，不得直接暴露公网。** TrustedHost 和请求大小限制不能代替鉴权及网关限流。
+API不接受文件路径、远程URL或任意上传保存位置，不提供抓取功能。来源名称仅作相对标签，不会用于读文件。0.2新增 /v1/library、/v1/search、/v1/ask、/v1/traces，详见使用指南。**已加入单用户SQLite持久化，但仍无用户鉴权、租户隔离或并发配额；只绑定回环地址，不得直接暴露公网。** TrustedHost、版本过滤和大小限制都不能代替对象授权。
 
 ## 6. 修复前后实验
 
@@ -193,7 +227,7 @@ python -X utf8 -m compliance_rag parse examples/repaired/missing-class-fixed.md 
 - 文档中的命令、代码和链接作为数据保留，不执行。它们仍可能影响未来的大模型，本模块**不是提示词注入防火墙**。
 - 标题结构错误、遗漏条文、图片内文字、OCR错误、未配置别名或不规范 Markdown 需要人工处理。
 - 标准标题、级别及类别依赖显式配置和层级，不能保证原文语义正确；只有来源审核能进一步提高可信性。
-- 暂不处理 PDF、Word、跨文件标题继承、向量化、检索问答或自动合规判断。
+- 暂不处理PDF、Word、跨文件标题继承或自动合规判断；0.2已补本地向量、检索与引用问答，但生成质量仍需真实服务及独立数据验证。
 - 字符目标不是 token 上限；超长表格/列表/围栏可能超过目标，需要按下游模型容量复核。
 - 每文件 1 MiB，每批最多32个文件及10,000个块；API请求体2 MiB。这些是保护上限，不是实测性能承诺。
 - JSONL 与诊断为文件级原子写入，不是多文件事务。使用本地支持硬链接的文件系统；IO失败时检查各输出状态。
@@ -208,7 +242,14 @@ compliance_rag/
   models.py       配置与中文元数据验证
   parser.py       语法树、标题栈、原文区间与Document
   __main__.py     批处理、入库门禁、JSONL与原子输出
-  api.py          本地FastAPI与有界请求
+  api.py          本地FastAPI与有界/无歧义JSON请求
+  knowledge.py    SQLite事务来源/块/向量存储与范围过滤
+  retrieval.py    中文词项BM25、余弦、RRF
+  embeddings.py   可选真实中文BGE、文件摘要、token门禁
+  generation.py   兼容模型、原文引用验证、revision复核、trace
+  rag_api.py      知识库/检索/问答/追踪接口
+  rag_cli.py      持久知识库CLI与评测入口
+  evaluation.py   20问合成对照评测
 examples/
   standards/      原创合成标准
   invalid/        结构缺陷样例

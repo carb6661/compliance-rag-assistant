@@ -9,6 +9,7 @@ from starlette.responses import JSONResponse
 
 from .models import IngestConfig, MAX_BYTES, StrictModel
 from .parser import InputError, parse_markdown, source_label
+from .generation import strict_json
 
 MAX_BODY = 2 * MAX_BYTES
 
@@ -32,28 +33,40 @@ class BodyLimit:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
-        headers = dict(scope.get("headers", []))
+        raw_headers = scope.get("headers", [])
+        if sum(key.lower() == b"content-type" for key, _ in raw_headers) > 1:
+            return await JSONResponse({"error": "duplicate content type"}, status_code=400)(scope, receive, send)
+        headers = dict(raw_headers)
         if scope["method"] == "POST" and headers.get(b"content-type", b"").split(b";")[0].strip().lower() != b"application/json":
             return await JSONResponse({"error": "application/json required"}, status_code=415)(scope, receive, send)
-        size, messages = 0, []
+        size, frames, body = 0, 0, bytearray()
         while True:
             message = await receive()
             if message["type"] == "http.disconnect":
                 return
             size += len(message.get("body", b""))
-            if size > MAX_BODY:
-                return await JSONResponse({"error": "request exceeds 2 MiB"}, status_code=413)(scope, receive, send)
-            messages.append(message)
+            frames += 1
+            if size > MAX_BODY or frames > 4096:
+                return await JSONResponse({"error": "request exceeds byte/frame budget"}, status_code=413)(scope, receive, send)
+            body.extend(message.get("body", b""))
             if not message.get("more_body", False):
                 break
+        if scope["method"] == "POST":
+            try:
+                strict_json(bytes(body).decode("utf-8"))
+            except (ValueError, RecursionError):
+                return await JSONResponse({"error": "invalid or ambiguous JSON"}, status_code=422)(scope, receive, send)
+        replayed = False
         async def replay():
-            if messages:
-                return messages.pop(0)
-            return {"type": "http.request", "body": b"", "more_body": False}
+            nonlocal replayed
+            payload = b"" if replayed else bytes(body)
+            replayed = True
+            return {"type": "http.request", "body": payload, "more_body": False}
         await self.app(scope, replay, send)
 
 
-app = FastAPI(title="Compliance RAG Assistant · 结构化入库", version="0.1.0")
+app = FastAPI(title="Compliance RAG Assistant · 可溯源证据问答", version="0.2.0")
+app.state.rag_service = None
 app.add_middleware(BodyLimit)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 
@@ -66,7 +79,7 @@ async def validation_error(request, exc):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "phase": "structured-ingestion", "version": "0.1.0"}
+    return {"status": "ok", "phase": "evidence-retrieval-and-qa", "version": "0.2.0"}
 
 
 @app.post("/v1/parse")
@@ -83,3 +96,7 @@ def parse(request: ParseRequest):
             "diagnostics": [d.model_dump() for d in result.diagnostics],
             "documents": [{"page_content": d.page_content, "metadata": d.metadata} for d in docs]}
     return JSONResponse(body, status_code=422 if blocked else 200)
+
+
+from .rag_api import attach
+attach(app)

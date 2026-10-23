@@ -1,0 +1,812 @@
+{
+  "dataset": "original-fictional-policy-20q-v1",
+  "documents": 2,
+  "chunks": 12,
+  "questions": 20,
+  "generation": "extractive-not-real-llm",
+  "embedding_identity": "BAAI/bge-small-zh-v1.5:fastembed-0.9.0:847676ef008f88641a491b50b92b086472e25adcc7b047a7e5a62fbfcc06c173",
+  "unfiltered_bm25_scope_violation_hits": 38,
+  "results": [
+    {
+      "retrieval": "bm25",
+      "answerable_questions": 16,
+      "hit_at_3": 1,
+      "mrr_at_3": 0.96875,
+      "unanswerable_refusal_rate": 0.75,
+      "scope_violation_hits": 0,
+      "p95_local_ms": 14.601,
+      "cases": [
+        {
+          "id": "v2-l3-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.673
+        },
+        {
+          "id": "v2-l2-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.835
+        },
+        {
+          "id": "v1-l3-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 12.923
+        },
+        {
+          "id": "v1-l2-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.596
+        },
+        {
+          "id": "v2-l3-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 12.987
+        },
+        {
+          "id": "v2-l2-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.602
+        },
+        {
+          "id": "v1-l2-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.023
+        },
+        {
+          "id": "v1-l3-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 14.583
+        },
+        {
+          "id": "v2-l3-contact",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.716
+        },
+        {
+          "id": "v1-l3-contact",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 12.683
+        },
+        {
+          "id": "synonym-integrity",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 0.5,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.908
+        },
+        {
+          "id": "synonym-entry",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 14.028
+        },
+        {
+          "id": "synonym-recovery",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.987
+        },
+        {
+          "id": "synonym-contact",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 14.792
+        },
+        {
+          "id": "broad-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 14.601
+        },
+        {
+          "id": "broad-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.857
+        },
+        {
+          "id": "related-unsupported",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.893
+        },
+        {
+          "id": "unknown-topic",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 13.717
+        },
+        {
+          "id": "unknown-edition",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 14.564
+        },
+        {
+          "id": "unknown-level",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 14.344
+        }
+      ]
+    },
+    {
+      "retrieval": "dense",
+      "answerable_questions": 16,
+      "hit_at_3": 0.0625,
+      "mrr_at_3": 0.0625,
+      "unanswerable_refusal_rate": 1,
+      "scope_violation_hits": 0,
+      "p95_local_ms": 24.009,
+      "cases": [
+        {
+          "id": "v2-l3-retention",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.001
+        },
+        {
+          "id": "v2-l2-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 18.62
+        },
+        {
+          "id": "v1-l3-retention",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 19.034
+        },
+        {
+          "id": "v1-l2-retention",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 18.674
+        },
+        {
+          "id": "v2-l3-restore",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 19.369
+        },
+        {
+          "id": "v2-l2-restore",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.037
+        },
+        {
+          "id": "v1-l2-restore",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.379
+        },
+        {
+          "id": "v1-l3-restore",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.001
+        },
+        {
+          "id": "v2-l3-contact",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.658
+        },
+        {
+          "id": "v1-l3-contact",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 19.046
+        },
+        {
+          "id": "synonym-integrity",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 22.962
+        },
+        {
+          "id": "synonym-entry",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.399
+        },
+        {
+          "id": "synonym-recovery",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.645
+        },
+        {
+          "id": "synonym-contact",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 21.909
+        },
+        {
+          "id": "broad-retention",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 19.305
+        },
+        {
+          "id": "broad-restore",
+          "expected_answerable": true,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 22.147
+        },
+        {
+          "id": "related-unsupported",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 24.009
+        },
+        {
+          "id": "unknown-topic",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 25.16
+        },
+        {
+          "id": "unknown-edition",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 18.238
+        },
+        {
+          "id": "unknown-level",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 18.438
+        }
+      ]
+    },
+    {
+      "retrieval": "hybrid",
+      "answerable_questions": 16,
+      "hit_at_3": 1,
+      "mrr_at_3": 0.96875,
+      "unanswerable_refusal_rate": 0.75,
+      "scope_violation_hits": 0,
+      "p95_local_ms": 26.547,
+      "cases": [
+        {
+          "id": "v2-l3-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 21.214
+        },
+        {
+          "id": "v2-l2-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 19.51
+        },
+        {
+          "id": "v1-l3-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 22.201
+        },
+        {
+          "id": "v1-l2-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 22.086
+        },
+        {
+          "id": "v2-l3-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 21.909
+        },
+        {
+          "id": "v2-l2-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 22.377
+        },
+        {
+          "id": "v1-l2-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 22.345
+        },
+        {
+          "id": "v1-l3-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 23.368
+        },
+        {
+          "id": "v2-l3-contact",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 22.241
+        },
+        {
+          "id": "v1-l3-contact",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 23.831
+        },
+        {
+          "id": "synonym-integrity",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 0.5,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 25.107
+        },
+        {
+          "id": "synonym-entry",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 24.454
+        },
+        {
+          "id": "synonym-recovery",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 23.661
+        },
+        {
+          "id": "synonym-contact",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 26.547
+        },
+        {
+          "id": "broad-retention",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 25.982
+        },
+        {
+          "id": "broad-restore",
+          "expected_answerable": true,
+          "hit_at_3": true,
+          "reciprocal_rank": 1,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.776
+        },
+        {
+          "id": "related-unsupported",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "evidence",
+          "reason": "evidence_quotes",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 37.632
+        },
+        {
+          "id": "unknown-topic",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.318
+        },
+        {
+          "id": "unknown-edition",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 20.283
+        },
+        {
+          "id": "unknown-level",
+          "expected_answerable": false,
+          "hit_at_3": false,
+          "reciprocal_rank": 0,
+          "status": "refused",
+          "reason": "no_evidence",
+          "citation_spans_valid": true,
+          "scope_violations": 0,
+          "latency_ms": 18.913
+        }
+      ]
+    }
+  ],
+  "dense_probes": [
+    {
+      "id": "v2-l3-retention",
+      "best_cosine": 0.71815,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "v2-l2-retention",
+      "best_cosine": 0.721717,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "v1-l3-retention",
+      "best_cosine": 0.704994,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "v1-l2-retention",
+      "best_cosine": 0.705583,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "v2-l3-restore",
+      "best_cosine": 0.707135,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "v2-l2-restore",
+      "best_cosine": 0.699061,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "v1-l2-restore",
+      "best_cosine": 0.698256,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "v1-l3-restore",
+      "best_cosine": 0.715914,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "v2-l3-contact",
+      "best_cosine": 0.660124,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "v1-l3-contact",
+      "best_cosine": 0.657704,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "synonym-integrity",
+      "best_cosine": 0.542771,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "synonym-entry",
+      "best_cosine": 0.645664,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "synonym-recovery",
+      "best_cosine": 0.584379,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "synonym-contact",
+      "best_cosine": 0.567351,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "broad-retention",
+      "best_cosine": 0.71815,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "broad-restore",
+      "best_cosine": 0.707135,
+      "ungated_gold_rank": 1
+    },
+    {
+      "id": "related-unsupported",
+      "best_cosine": 0.516135,
+      "ungated_gold_rank": null
+    },
+    {
+      "id": "unknown-topic",
+      "best_cosine": 0.331115,
+      "ungated_gold_rank": null
+    },
+    {
+      "id": "unknown-edition",
+      "best_cosine": null,
+      "ungated_gold_rank": null
+    },
+    {
+      "id": "unknown-level",
+      "best_cosine": null,
+      "ungated_gold_rank": null
+    }
+  ],
+  "limitations": "20 authored questions on 12 small synthetic chunks, no held-out or production accuracy claim. No real LLM generation evaluated. Related-but-unsupported question intentionally exposes refusal weakness; P95 is a small-sample nearest-rank observation, not an SLA.",
+  "measurement": {
+    "stage": "before-dense-threshold-correction",
+    "dense_min_cosine": 0.72,
+    "real_llm": false
+  }
+}
