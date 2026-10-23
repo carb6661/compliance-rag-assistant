@@ -29,7 +29,7 @@ python -X utf8 -m compliance_rag.semantic_smoke --model-path "<prepared-model-di
 | Dense（真实BGE） | 16/16 | 1.0 | 3/4 | 0 |
 | Hybrid（RRF） | 16/16 | 0.96875 | 3/4 | 0 |
 
-未加范围过滤的同一BM25基线在16题top3里产生38个越版本/级别hit；过滤后为0。过高0.72阈值曾让Dense仅1/16；开发阈值0.50后16/16。语义分数没有变，只改变门槛；这就是阈值修正，不是模型训练提升。
+未加范围过滤的同一BM25基线在16题top3里产生38个越版本/级别hit；过滤后为0。过高0.72阈值曾让Dense仅1/16；开发阈值0.50后16/16。语义分数没有变，只改变门槛；这就是阈值修正，不是模型训练提升。代价是Dense不可回答拒答从4/4降到3/4，不是无代价提升；必须用独立数据重新校准。
 
 [修正前完整记录](../examples/evaluation/semantic-before.json) · [修正后完整记录](../examples/evaluation/semantic-after.json)。每个返回quote都用原文字符切片重验；无引用的拒答项不计作“模型引用正确”。P95为单机暖模型20次查询的一次nearest-rank观察（包含检索/抽取/trace，不含初始化或外部LLM），不是压测/SLA，不作为简历性能承诺。
 
@@ -39,7 +39,7 @@ python -X utf8 -m compliance_rag.semantic_smoke --model-path "<prepared-model-di
 
 没有真实生成服务配置/密钥，**未做真实LLM端到端、模型事实质量、费用或服务商兼容性认证**。只有MockTransport契约测试，不把它算模型实测。真实语义可选依赖只在Windows/Python3.12.8运行；常规CI不下载权重。
 
-CI已增加基础131项、离线评测与真实本地HTTP，具体运行状态待发布后记录；不预填成功。
+[0.2首发CI](https://github.com/carb6661/compliance-rag-assistant/actions/runs/39980575362)对应提交`757c806a9af023704c14604d5e2135c57697e9b7`：Windows/Linux × Python3.11/3.12/3.13六组均成功，包含基础131项、离线20问评测与真实本地HTTP。CI不下载可选模型，也不调用真实生成服务；真实BGE是上文单独执行的Windows本地验证，不把两种范围混为一谈。
 
 ### 公开内容检查
 
