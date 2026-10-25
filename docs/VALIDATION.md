@@ -12,7 +12,9 @@ Windows/Python3.12.8实际 **167项测试通过**（0.2原131项回归按新写�
 - 真实BGE semantic_smoke在禁止socket/DNS下再次运行：512维与超512 token拒绝继续成立；原20问三模式结果不变（16题Hit@3全部命中，拒答仍3/4）。本轮没有真实LLM凭据，未尝试付费外部调用，也不把契约Mock计为生成模型验证。
 - 公开范围Secret Scanner（排除本地venv/权重/output）0条规则匹配，仍需人工核对提交列表，不把规则0匹配写成绝对安全。
 
-CI新增条件演示，具体发布运行结果在实际检查后记录。0.2旧版最后写者风险是基于原代码分析，不宣称做过旧版HTTP利用或生产负载对照。
+[0.3首发CI](https://github.com/carb6661/compliance-rag-assistant/actions/runs/40202875801)对应代码提交`b0a5784924426940fa28326cb1bf6529d59e943b`，Windows/Linux × Python3.11/3.12/3.13六组全部成功，每组实际167项通过、pip check无冲突，均运行离线评测、真实HTTP与条件写演示。CI不下载真实BGE权重或调用真实LLM；真实BGE单独在本机重跑。
+
+按Git拟发布的52个受跟踪文件逐文件扫描为0条规则匹配；`.models`、venv、output未被跟踪。Workflow Trust Auditor对自身CI为0条静态子集匹配，这些都不等于安全证明。0.2旧版最后写者风险基于原代码分析，不宣称做过旧版HTTP利用或生产负载对照。
 
 ## 0.2：持久知识库、真实向量与引用问答（2026-10-23）
 
