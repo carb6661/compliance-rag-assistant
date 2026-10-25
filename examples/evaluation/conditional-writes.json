@@ -1,0 +1,20 @@
+{
+  "dataset": "original-synthetic-source-write-v1",
+  "real_llm": false,
+  "unconditional_update": 428,
+  "create_over_existing": 412,
+  "two_reviewers": {
+    "first_update": 200,
+    "second_stale_update": 412,
+    "first_edit_preserved": true
+  },
+  "content_aba_old_tag": 412,
+  "delete_recreate_old_tag": 412,
+  "threaded_writers": {
+    "attempts": 8,
+    "committed": 1,
+    "conflicts": 7,
+    "revision_increments": 1
+  },
+  "scope": "Actual 0.3 store behavior in private temporary SQLite; not an old-version exploit, LLM run or load benchmark."
+}

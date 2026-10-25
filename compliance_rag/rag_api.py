@@ -11,6 +11,7 @@ from .generation import AskRequest, RagService, generator_from_env
 from .knowledge import KnowledgeStore, SearchRequest
 from .models import IngestConfig, MAX_BYTES, StrictModel
 from .parser import InputError, source_label
+from .conditions import WriteRejected, from_headers
 
 router = APIRouter()
 LOCK = threading.Lock()
@@ -51,17 +52,29 @@ def service(request):
 
 @router.get("/v1/library")
 def inventory(request: Request):
-    return service(request).store.inventory()
+    return JSONResponse(service(request).store.inventory(), headers={"Cache-Control":"no-store"})
 
 
 @router.post("/v1/library/ingest")
 def ingest(payload: IngestRequest, request: Request):
-    return service(request).store.ingest(payload.text, payload.source_name, payload.config)
+    condition = from_headers(request.headers)
+    result = service(request).store.ingest(payload.text, payload.source_name, payload.config, condition=condition)
+    return JSONResponse(result, headers={"ETag": result["source_etag"], "Cache-Control": "no-store"})
+
+
+@router.post("/v1/library/source")
+def source(payload: DeleteRequest, request: Request):
+    result = service(request).store.source(payload.source_name)
+    if result is None:
+        return JSONResponse({"error": "source not found"}, status_code=404, headers={"Cache-Control": "no-store"})
+    return JSONResponse(result, headers={"ETag": result["source_etag"], "Cache-Control": "no-store"})
 
 
 @router.post("/v1/library/remove")
 def remove(payload: DeleteRequest, request: Request):
-    return service(request).store.delete(payload.source_name)
+    condition = from_headers(request.headers, delete=True)
+    return JSONResponse(service(request).store.delete(payload.source_name, condition=condition),
+                        headers={"Cache-Control":"no-store"})
 
 
 @router.post("/v1/search")
@@ -84,6 +97,11 @@ def trace(trace_id: str, request: Request):
 
 def attach(app):
     app.include_router(router)
+
+    @app.exception_handler(WriteRejected)
+    def rejected_write(request, error):
+        return JSONResponse({"error": error.code, "advice": "Read and review the current source before retrying; never overwrite automatically."},
+                            status_code=error.status, headers={"Cache-Control": "no-store"})
 
     @app.exception_handler(InputError)
     def invalid(request, error):

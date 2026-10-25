@@ -16,6 +16,11 @@ from compliance_rag.generation import AskRequest, CompatibleGenerator, Compatibl
 from compliance_rag.knowledge import KnowledgeStore, Scope, SearchRequest
 from compliance_rag.parser import InputError, normalize_text
 from compliance_rag.retrieval import rank, terms, unit_vector
+from compliance_rag.conditions import WriteCondition, WriteRejected
+
+
+def current(store, source="knowledge/v2.md"):
+    return WriteCondition.match(store.source(source)["source_etag"])
 
 
 @pytest.fixture
@@ -73,14 +78,14 @@ def test_same_question_different_version_level(store, edition, level, expected):
 
 def test_idempotent_ingest_no_revision_increment(store):
     before = store.revision()
-    result = store.ingest((DATA/"v2.md").read_bytes().decode(), "knowledge/v2.md", sample_config("v2"))
+    result = store.ingest((DATA/"v2.md").read_bytes().decode(), "knowledge/v2.md", sample_config("v2"), condition=current(store))
     assert result["status"] == "unchanged"
     assert store.revision() == before
 
 
 def test_replace_removes_old_chunks_and_vectors(store):
     text = (DATA/"v2.md").read_bytes().decode().replace("180天", "181天")
-    store.ingest(text, "knowledge/v2.md", sample_config("v2"))
+    store.ingest(text, "knowledge/v2.md", sample_config("v2"), condition=current(store))
     result = store.search(question())
     assert "181天" in result["hits"][0]["evidence_text"]
     with store.connect() as db:
@@ -91,7 +96,7 @@ def test_replace_removes_old_chunks_and_vectors(store):
 def test_bad_replacement_preserves_old_source(store):
     before = store.inventory()
     with pytest.raises(InputError):
-        store.ingest("# 无作用域\n正文", "knowledge/v2.md", sample_config("v2"))
+        store.ingest("# 无作用域\n正文", "knowledge/v2.md", sample_config("v2"), condition=current(store))
     assert store.inventory() == before
     assert "180天" in store.search(question())["hits"][0]["evidence_text"]
 
@@ -101,27 +106,38 @@ def test_sql_insert_failure_rolls_back_replacement(store):
     with store.connect() as db:
         db.execute("CREATE TRIGGER fail_chunk BEFORE INSERT ON chunks BEGIN SELECT RAISE(ABORT,'synthetic failure'); END")
     with pytest.raises(sqlite3.DatabaseError):
-        store.ingest((DATA/"v2.md").read_bytes().decode().replace("180天", "181天"), "knowledge/v2.md", sample_config("v2"))
+        store.ingest((DATA/"v2.md").read_bytes().decode().replace("180天", "181天"), "knowledge/v2.md", sample_config("v2"), condition=current(store))
     assert store.revision() == before
     assert "180天" in store.search(question())["hits"][0]["evidence_text"]
 
 
-def test_delete_cascades_and_is_idempotent(store):
-    assert store.delete("knowledge/v2.md")["status"] == "deleted"
+def test_delete_cascades_and_stale_repeat_is_rejected(store):
+    condition = current(store)
+    assert store.delete("knowledge/v2.md", condition=condition)["status"] == "deleted"
     after = store.revision()
     assert store.search(question())["hits"] == []
-    assert store.delete("knowledge/v2.md")["status"] == "not_found"
+    with pytest.raises(WriteRejected) as rejected:
+        store.delete("knowledge/v2.md", condition=condition)
+    assert rejected.value.status == 412
     assert store.revision() == after
     with store.connect() as db:
         assert db.execute("SELECT count(*) FROM chunks").fetchone()[0] == 6
 
 
-def test_concurrent_identical_ingest_single_revision(store):
+def test_concurrent_identical_ingest_with_old_etag_single_commit(store):
     before = store.revision()
     text = (DATA/"v2.md").read_bytes().decode().replace("180天", "182天")
+    condition = current(store)
+    def submit(_):
+        try:
+            return store.ingest(text, "knowledge/v2.md", sample_config("v2"), condition=condition)
+        except WriteRejected as error:
+            assert error.status == 412
+            return {"status":"conflict"}
     with ThreadPoolExecutor(max_workers=4) as pool:
-        results = list(pool.map(lambda _: store.ingest(text, "knowledge/v2.md", sample_config("v2")), range(8)))
+        results = list(pool.map(submit, range(8)))
     assert sum(r["status"] == "indexed" for r in results) == 1
+    assert sum(r["status"] == "conflict" for r in results) == 7
     assert store.revision() == before + 1
 
 
@@ -169,7 +185,7 @@ def test_model_abstention(store):
 
 
 def test_revision_change_during_generation_discards_answer(store):
-    generator = StubGenerator(callback=lambda: store.delete("knowledge/v2.md"))
+    generator = StubGenerator(callback=lambda: store.delete("knowledge/v2.md", condition=current(store)))
     result = RagService(store, generator).ask(question(generation="llm"))
     assert result["reason"] == "knowledge_changed"
     assert result["answer"] == "" and not result["citations"] and not result["retrieval"]["hits"]
@@ -227,7 +243,7 @@ def test_failed_embedding_never_replaces_source(tmp_path):
     before = store.revision()
     embedder.documents = lambda texts: []
     with pytest.raises(InputError):
-        store.ingest((DATA/"v2.md").read_bytes().decode().replace("180天","181天"), "knowledge/v2.md", sample_config("v2"))
+        store.ingest((DATA/"v2.md").read_bytes().decode().replace("180天","181天"), "knowledge/v2.md", sample_config("v2"), condition=current(store))
     assert store.revision() == before
 
 
@@ -330,7 +346,8 @@ def test_api_ingest_query_trace_remove(store):
             assert "180天" in response.json()["answer"]
             assert client.get("/v1/traces/"+response.json()["trace_id"]).status_code == 200
             assert client.get("/v1/traces/INVALID").status_code == 404
-            assert client.post("/v1/library/remove",json={"source_name":"knowledge/v2.md"}).status_code == 200
+            assert client.post("/v1/library/remove",json={"source_name":"knowledge/v2.md"},
+                               headers={"If-Match":store.source("knowledge/v2.md")["source_etag"]}).status_code == 200
             assert client.post("/v1/search",json=question().model_dump(exclude={"generation"})).json()["hits"] == []
     finally:
         app.state.rag_service = previous

@@ -191,6 +191,7 @@ class RagService:
             start_line = metadata["起始行"] + hit["evidence_text"][:relative].count("\n")
             citations.append({"citation_id": item.citation_id, "quote": item.quote,
                 "chunk_id": hit["chunk_id"], "source": metadata["来源文件"],
+                "source_etag": hit["source_etag"],
                 "start_char": start, "end_char": start + len(item.quote),
                 "start_line": start_line, "end_line": start_line + item.quote[:-1].count("\n"),
                 "source_sha256": metadata["源文件SHA256"], "metadata": metadata})

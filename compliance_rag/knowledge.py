@@ -5,12 +5,15 @@ import math
 from pathlib import Path
 import sqlite3
 import struct
+import uuid
 
 from .models import IngestConfig, StrictModel
 from pydantic import Field, field_validator
 from typing import Literal
 from .parser import InputError, canonical_json, normalize_text, parse_markdown, source_label
 from .retrieval import rank, unit_vector
+from .conditions import WriteCondition, WriteRejected, require_condition
+from .parser import sha
 
 
 class Scope(StrictModel):
@@ -62,13 +65,25 @@ class KnowledgeStore:
                   retrieval TEXT, generation TEXT, candidates INTEGER, citations INTEGER,
                   total_ms REAL);
             """)
+            db.execute("BEGIN IMMEDIATE")
             db.execute("INSERT OR IGNORE INTO settings VALUES ('revision','0')")
             db.execute("INSERT OR IGNORE INTO settings VALUES ('embedding',?)", (self.identity,))
             db.execute("INSERT OR IGNORE INTO settings VALUES ('dimension',?)", (str(self.dimension),))
             db.execute("INSERT OR IGNORE INTO settings VALUES ('schema','1')")
             values = dict(db.execute("SELECT key,value FROM settings"))
-            if values["embedding"] != self.identity or values["dimension"] != str(self.dimension) or values["schema"] != "1":
+            if values["embedding"] != self.identity or values["dimension"] != str(self.dimension) or values["schema"] not in ("1", "2"):
                 raise InputError("index identity/schema mismatch; use a separate database or explicit rebuild")
+            if values["schema"] == "1":
+                db.execute("ALTER TABLE sources ADD COLUMN generation INTEGER NOT NULL DEFAULT 0")
+                db.execute("UPDATE sources SET generation=?", (self._revision(db),))
+                db.execute("INSERT INTO settings VALUES ('instance_id',?)", (uuid.uuid4().hex,))
+                db.execute("UPDATE settings SET value='2' WHERE key='schema'")
+            if "generation" not in {row[1] for row in db.execute("PRAGMA table_info(sources)")}:
+                raise InputError("schema-2 source generation column is missing")
+            instance = db.execute("SELECT value FROM settings WHERE key='instance_id'").fetchone()
+            if instance is None or len(instance[0]) != 32 or any(c not in "0123456789abcdef" for c in instance[0]):
+                raise InputError("invalid knowledge store instance identity")
+            self.instance_id = instance[0]
 
     @contextmanager
     def connect(self):
@@ -85,8 +100,35 @@ class KnowledgeStore:
         with self.connect() as db:
             return int(db.execute("SELECT value FROM settings WHERE key='revision'").fetchone()[0])
 
-    def ingest(self, text, source_name, config=None):
+    def _source_etag(self, row):
+        identity = [self.instance_id, row["name"], row["generation"], row["source_hash"], row["config_hash"]]
+        return '"' + sha(canonical_json(identity).encode("utf-8")) + '"'
+
+    def _check_condition(self, row, condition):
+        matches = row is None if condition.mode == "create" else row is not None and self._source_etag(row) == condition.etag
+        if not matches:
+            # Do not return the newer token: a conflict must require an explicit fresh read.
+            raise WriteRejected("precondition_failed", 412)
+
+    def source(self, source_name):
         source_label(source_name)
+        with self.connect() as db:
+            db.execute("BEGIN")
+            row = db.execute("SELECT * FROM sources WHERE name=?", (source_name,)).fetchone()
+            if row is None:
+                return None
+            return {"source_name": row["name"], "source_etag": self._source_etag(row),
+                    "source_generation": row["generation"],
+                    "source_sha256": row["source_hash"], "config_sha256": row["config_hash"],
+                    "normalized_text": row["normalized_text"]}
+
+    def ingest(self, text, source_name, config=None, *, condition=None):
+        source_label(source_name)
+        condition = require_condition(condition)
+        # Cheap preflight avoids parsing/embedding an already stale submission.
+        # It is not the commit guard: the transaction repeats the check below.
+        with self.connect() as db:
+            self._check_condition(db.execute("SELECT * FROM sources WHERE name=?", (source_name,)).fetchone(), condition)
         config = config or IngestConfig()
         result = parse_markdown(text, source_name, config)
         if result.errors:
@@ -104,14 +146,18 @@ class KnowledgeStore:
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             old = db.execute("SELECT * FROM sources WHERE name=?", (source_name,)).fetchone()
+            self._check_condition(old, condition)
             if old and (old["source_hash"], old["config_hash"]) == (result.source_hash, result.config_hash):
-                return {"status": "unchanged", "revision": self._revision(db), "chunks": len(result.documents)}
+                return {"status": "unchanged", "revision": self._revision(db), "chunks": len(result.documents),
+                        "source_etag": self._source_etag(old), "source_generation": old["generation"]}
             remaining = db.execute("SELECT count(*),coalesce(sum(length(CAST(normalized_text AS BLOB))),0) FROM sources WHERE name!=?", (source_name,)).fetchone()
             count = db.execute("SELECT count(*) FROM chunks WHERE source!=?", (source_name,)).fetchone()[0]
             if remaining[0] >= 32 or remaining[1] + len(text.encode("utf-8")) > 8*1024*1024 or count+len(texts) > 2000:
                 raise InputError("knowledge store source/byte/chunk budget exceeded")
             db.execute("DELETE FROM sources WHERE name=?", (source_name,))
-            db.execute("INSERT INTO sources VALUES (?,?,?,?)", (source_name, result.source_hash, result.config_hash, normalize_text(text)))
+            generation = self._revision(db) + 1
+            db.execute("INSERT INTO sources (name,source_hash,config_hash,normalized_text,generation) VALUES (?,?,?,?,?)",
+                       (source_name, result.source_hash, result.config_hash, normalize_text(text), generation))
             for doc, vector in zip(result.documents, vectors):
                 m = doc.metadata
                 packed = struct.pack(f"<{self.dimension}f", *vector) if vector is not None else None
@@ -119,16 +165,21 @@ class KnowledgeStore:
                     m["块ID"], source_name, m["标准编号"], m["标准版本"], m["安全级别"], m["安全类"],
                     m["条款标题"], doc.page_content, canonical_json(m), packed))
             db.execute("UPDATE settings SET value=CAST(value AS INTEGER)+1 WHERE key='revision'")
-            return {"status": "indexed", "revision": self._revision(db), "chunks": len(texts)}
+            current = db.execute("SELECT * FROM sources WHERE name=?", (source_name,)).fetchone()
+            return {"status": "indexed", "revision": self._revision(db), "chunks": len(texts),
+                    "source_etag": self._source_etag(current), "source_generation": generation}
 
     @staticmethod
     def _revision(db):
         return int(db.execute("SELECT value FROM settings WHERE key='revision'").fetchone()[0])
 
-    def delete(self, source_name):
+    def delete(self, source_name, *, condition=None):
         source_label(source_name)
+        condition = require_condition(condition, delete=True)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT * FROM sources WHERE name=?", (source_name,)).fetchone()
+            self._check_condition(row, condition)
             count = db.execute("DELETE FROM sources WHERE name=?", (source_name,)).rowcount
             if count:
                 db.execute("UPDATE settings SET value=CAST(value AS INTEGER)+1 WHERE key='revision'")
@@ -147,6 +198,7 @@ class KnowledgeStore:
                 sql += " AND security_class=?"
                 params.append(scope.security_class)
             rows = [dict(row) for row in db.execute(sql + " ORDER BY chunk_id", params)]
+            etags = {row["name"]: self._source_etag(row) for row in db.execute("SELECT * FROM sources")}
         query_vector = unit_vector(self.embedder.query(request.question), self.dimension) if request.retrieval != "bm25" and rows else None
         for row in rows:
             row["metadata"] = json.loads(row["metadata"])
@@ -162,7 +214,8 @@ class KnowledgeStore:
                 continue
             remaining -= len(excerpt)
             hits.append({**scored, "citation_id": f"C{len(hits)+1}", "evidence_text": excerpt,
-                         "metadata": row["metadata"], "excerpt_truncated": len(excerpt) < len(row["content"])})
+                         "metadata": row["metadata"], "source_etag": etags[row["source"]],
+                         "excerpt_truncated": len(excerpt) < len(row["content"])})
         return {"revision": revision, "candidate_count": len(rows), "retrieval": request.retrieval,
                 "embedding_identity": self.identity, "dense_min_cosine": self.dense_min_cosine, "hits": hits}
 
@@ -179,5 +232,8 @@ class KnowledgeStore:
 
     def inventory(self):
         with self.connect() as db:
+            db.execute("BEGIN")
+            etags = {row["name"]: self._source_etag(row) for row in db.execute("SELECT * FROM sources")}
             rows = db.execute("SELECT source,standard_code,edition,level,security_class,count(*) AS chunks FROM chunks GROUP BY source,standard_code,edition,level,security_class ORDER BY source,level,security_class")
-            return {"revision": self._revision(db), "embedding_identity": self.identity, "sources": [dict(r) for r in rows]}
+            return {"revision": self._revision(db), "embedding_identity": self.identity,
+                    "sources": [{**dict(r), "source_etag": etags[r["source"]]} for r in rows]}

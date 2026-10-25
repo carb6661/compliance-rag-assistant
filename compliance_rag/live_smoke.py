@@ -32,7 +32,8 @@ def main():
                 raise RuntimeError("local HTTP server did not start")
             with httpx.Client(base_url=f"http://127.0.0.1:{port}", trust_env=False, timeout=10) as client:
                 indexed = client.post("/v1/library/ingest", json={"text":(DATA/"v2.md").read_bytes().decode(),
-                    "source_name":"knowledge/v2.md", "config":sample_config("v2").model_dump()})
+                    "source_name":"knowledge/v2.md", "config":sample_config("v2").model_dump()},
+                    headers={"If-None-Match":"*"})
                 assert indexed.status_code == 200 and indexed.json()["chunks"] == 6
                 payload = {"question":"进入记录保留多久？","scope":{"standard_code":"TRAINING-POLICY",
                     "edition":"v2","security_level":"第三级","security_class":"安全物理环境"}}
@@ -40,12 +41,25 @@ def main():
                 assert response.status_code == 200 and "180天" in response.json()["answer"]
                 trace = client.get("/v1/traces/"+response.json()["trace_id"])
                 assert trace.status_code == 200 and "question" not in trace.json()
-                removed = client.post("/v1/library/remove",json={"source_name":"knowledge/v2.md"})
+                edited = {"text":(DATA/"v2.md").read_bytes().decode().replace("180天","181天"),
+                    "source_name":"knowledge/v2.md", "config":sample_config("v2").model_dump()}
+                missing = client.post("/v1/library/ingest",json=edited)
+                updated = client.post("/v1/library/ingest",json=edited,headers={"If-Match":indexed.headers["etag"]})
+                stale = client.post("/v1/library/ingest",json=edited,headers={"If-Match":indexed.headers["etag"]})
+                stale_delete = client.post("/v1/library/remove",json={"source_name":"knowledge/v2.md"},headers={"If-Match":indexed.headers["etag"]})
+                assert [missing.status_code,updated.status_code,stale.status_code,stale_delete.status_code] == [428,200,412,412]
+                latest = client.post("/v1/library/source",json={"source_name":"knowledge/v2.md"})
+                assert "181天" in latest.json()["normalized_text"]
+                assert latest.headers["etag"] == updated.headers["etag"] != indexed.headers["etag"]
+                removed = client.post("/v1/library/remove",json={"source_name":"knowledge/v2.md"},
+                                      headers={"If-Match": updated.headers["etag"]})
                 empty = client.post("/v1/ask",json=payload)
                 assert empty.json()["status"] == "refused" and not empty.json()["citations"]
                 print(json.dumps({"transport":"real-loopback-http", "real_llm":False,
                     "statuses":[indexed.status_code,response.status_code,trace.status_code,removed.status_code,empty.status_code],
-                    "indexed_chunks":6,"answer_contains":"180天", "after_delete":"no_evidence"}, ensure_ascii=False))
+                    "indexed_chunks":6,"answer_contains":"180天", "after_delete":"no_evidence",
+                    "conditional_statuses":[missing.status_code,updated.status_code,stale.status_code,stale_delete.status_code],
+                    "latest_source_contains":"181天", "etag_changed":True}, ensure_ascii=False))
         finally:
             server.should_exit = True
             thread.join(10)

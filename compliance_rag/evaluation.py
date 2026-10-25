@@ -11,6 +11,7 @@ from .knowledge import KnowledgeStore, Scope
 from .models import IngestConfig
 from .parser import normalize_text
 from .retrieval import rank, unit_vector
+from .conditions import WriteCondition
 
 DATA = Path(__file__).resolve().parent.parent / "examples/knowledge"
 
@@ -24,7 +25,7 @@ def sample_config(edition):
 def seed(store):
     for edition in ("v1", "v2"):
         text = (DATA/f"{edition}.md").read_bytes().decode("utf-8")
-        store.ingest(text, f"knowledge/{edition}.md", sample_config(edition))
+        store.ingest(text, f"knowledge/{edition}.md", sample_config(edition), condition=WriteCondition.create())
 
 
 def evaluate(embedder=None, dense_min_cosine=0.50):

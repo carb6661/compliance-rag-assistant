@@ -8,6 +8,7 @@ from .__main__ import atomic_write, load_config
 from .generation import AskRequest, RagService, generator_from_env
 from .knowledge import KnowledgeStore
 from .parser import InputError
+from .conditions import WriteCondition, WriteRejected
 
 
 def main(argv=None):
@@ -15,7 +16,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     prepare = sub.add_parser("prepare-model")
     prepare.add_argument("--cache-dir", default=".models")
-    for name in ("ingest", "ask", "inventory", "remove", "evaluate"):
+    for name in ("ingest", "ask", "inventory", "source", "remove", "evaluate"):
         cmd = sub.add_parser(name)
         cmd.add_argument("--db", default="output/knowledge.sqlite3")
         cmd.add_argument("--model-path", help="Prepared local BGE model directory; no auto download")
@@ -23,8 +24,13 @@ def main(argv=None):
             cmd.add_argument("source")
             cmd.add_argument("--source-name")
             cmd.add_argument("--config")
-        if name == "remove":
+            precondition = cmd.add_mutually_exclusive_group(required=True)
+            precondition.add_argument("--create-only", action="store_true")
+            precondition.add_argument("--if-match")
+        if name in ("source", "remove"):
             cmd.add_argument("source_name")
+        if name == "remove":
+            cmd.add_argument("--if-match", required=True)
         if name == "ask":
             cmd.add_argument("question")
             cmd.add_argument("--standard-code", required=True)
@@ -58,21 +64,38 @@ def main(argv=None):
                     raw = stream.read(1048577)
                 if len(raw) > 1048576:
                     raise InputError("source exceeds byte budget")
-                result = store.ingest(raw.decode("utf-8"), args.source_name or Path(args.source).name, load_config(args.config))
+                condition = WriteCondition.create() if args.create_only else cli_match(args.if_match)
+                result = store.ingest(raw.decode("utf-8"), args.source_name or Path(args.source).name,
+                                      load_config(args.config), condition=condition)
             elif args.command == "inventory":
                 result = store.inventory()
             elif args.command == "remove":
-                result = store.delete(args.source_name)
+                result = store.delete(args.source_name, condition=cli_match(args.if_match))
+            elif args.command == "source":
+                result = store.source(args.source_name) or {"status": "not_found"}
             else:
                 request = AskRequest(question=args.question, scope={"standard_code": args.standard_code,
                     "edition": args.edition, "security_level": args.level, "security_class": args.security_class},
                     retrieval=args.retrieval, generation=args.generation)
                 result = RagService(store, generator_from_env()).ask(request)
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 1 if result.get("status") == "refused" else 0
+        return 1 if result.get("status") == "refused" else (4 if result.get("status") == "not_found" else 0)
+    except WriteRejected as error:
+        print(json.dumps({"error": error.code, "http_status": error.status,
+            "advice": "Read and review the current source before retrying; do not retry automatically."}))
+        return 3 if error.status == 412 else 2
     except (OSError, InputError, ValueError, ImportError, RecursionError):
         print(json.dumps({"error": "operation failed: check input, prepared model, index identity and private configuration"}))
         return 2
+
+
+def cli_match(value):
+    # Shells differ in preserving embedded quotes. The CLI also accepts bare hex;
+    # HTTP itself still requires the exact quoted strong ETag.
+    import re
+    if re.fullmatch(r"[0-9a-f]{64}", value):
+        value = '"' + value + '"'
+    return WriteCondition.match(value)
 
 
 if __name__ == "__main__":

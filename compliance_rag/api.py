@@ -65,7 +65,7 @@ class BodyLimit:
         await self.app(scope, replay, send)
 
 
-app = FastAPI(title="Compliance RAG Assistant · 可溯源证据问答", version="0.2.0")
+app = FastAPI(title="Compliance RAG Assistant · 可溯源证据问答", version="0.3.0")
 app.state.rag_service = None
 app.add_middleware(BodyLimit)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
@@ -79,7 +79,7 @@ async def validation_error(request, exc):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "phase": "evidence-retrieval-and-qa", "version": "0.2.0"}
+    return {"status": "ok", "phase": "conditional-knowledge-maintenance-and-qa", "version": "0.3.0"}
 
 
 @app.post("/v1/parse")

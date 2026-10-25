@@ -3,7 +3,9 @@
 [![Tests](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**0.2：可持久更新、按版本/级别检索、带精确引用的合规资料证据问答。不是自动测评判定。**
+**0.3：带条件知识维护的合规资料证据问答。保留0.2真实向量与精确引用，不作自动测评判定。**
+
+本轮继续深化同一RAG主项目：处理“两份旧草稿互相覆盖”和“用旧版本误删新资料”。新建必须create-only，修改/删除必须带来源ETag；提交时在SQLite事务内复核，覆盖正文和删除重建两种ABA都不能复活旧token。详见[问题、设计与升级合同](docs/CONDITIONAL_WRITES.md)。这是写入行为变更，旧客户端应先按指南迁移，原文档解析接口保持兼容。
 
 使用 Python、FastAPI、SQLite 和 LangChain Document，在原有标题层级入库上补齐资料导入、持久查询、更新/删除、范围过滤、BM25/真实中文向量/RRF检索、证据回答、引用校验与追踪。适合安全工程师先定位资料依据、再人工核验的私有本地工作流。
 
@@ -17,7 +19,7 @@
 - 不用随机向量冒充语义：真实运行BGE-small-zh ONNX，模型及分词器摘要绑定索引，超512 token拒绝静默截断。
 - 不只展示成功：20问开发集保留“相关但缺少事实”的拒答失败，混合检索也没有被包装成必然优于Dense。
 
-详细入口：[实际运行与模型接入](docs/RAG_GUIDE.md) · [项目背景/设计/难点/亮点/简历模板](docs/PROJECT_STORY.md) · [真实前后评测](examples/evaluation/semantic-after.json) · [验证记录](docs/VALIDATION.md)
+详细入口：[实际运行与模型接入](docs/RAG_GUIDE.md) · [项目背景/设计/难点/亮点/简历模板](docs/PROJECT_STORY.md) · [条件维护证据](examples/evaluation/conditional-writes.json) · [真实向量评测](examples/evaluation/semantic-after.json) · [验证记录](docs/VALIDATION.md)
 
 ### 先验证一个完整业务流程
 
@@ -26,10 +28,11 @@
 ```bash
 python -X utf8 -m compliance_rag.rag_cli evaluate
 python -X utf8 -m compliance_rag.live_smoke
+python -X utf8 -m compliance_rag.conditional_demo
 python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
 ```
 
-另开终端：`python -X utf8 examples/rag_api_client.py`，实际导入两个版本、查询v2第三级进入记录，返回含“180天”的原文与来源区间。数字只是虚构练习设定，不是真实标准。真实向量与LLM接入命令见上方使用指南。
+先选择新的私有演示数据库，再启动服务；另开终端：`python -X utf8 examples/rag_api_client.py`。它只创建两份样本，已有来源即停止且不覆盖。查询v2第三级进入记录返回含“180天”的原文与来源区间，数字只是虚构练习。真实向量与LLM接入见使用指南。
 
 ### 已测结果与没有解决的问题
 
@@ -244,6 +247,8 @@ compliance_rag/
   __main__.py     批处理、入库门禁、JSONL与原子输出
   api.py          本地FastAPI与有界/无歧义JSON请求
   knowledge.py    SQLite事务来源/块/向量存储与范围过滤
+  conditions.py   来源条件、严格If-Match/If-None-Match合同
+  conditional_demo.py  旧草稿/ABA/并发写真实合成验证
   retrieval.py    中文词项BM25、余弦、RRF
   embeddings.py   可选真实中文BGE、文件摘要、token门禁
   generation.py   兼容模型、原文引用验证、revision复核、trace

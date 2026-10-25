@@ -17,7 +17,11 @@ args = parser.parse_args()
 with httpx.Client(base_url="http://127.0.0.1:8000", timeout=40, trust_env=False) as client:
     for edition in ("v1","v2"):
         response = client.post("/v1/library/ingest", json={"text":(DATA/f"{edition}.md").read_bytes().decode(),
-            "source_name":f"knowledge/{edition}.md", "config":sample_config(edition).model_dump()})
+            "source_name":f"knowledge/{edition}.md", "config":sample_config(edition).model_dump()}, headers={"If-None-Match":"*"})
+        if response.status_code == 412:
+            # Existing demo sources may be user-edited. Never fetch a new ETag
+            # and silently overwrite them just to make this demonstration green.
+            raise SystemExit("Demo source already exists. Use a fresh demo database or review it with /v1/library/source; no overwrite was attempted.")
         response.raise_for_status()
     response = client.post("/v1/ask", json={"question":"进入记录保留多久？", "scope":{
         "standard_code":"TRAINING-POLICY", "edition":"v2", "security_level":"第三级", "security_class":"安全物理环境"},

@@ -1,14 +1,14 @@
-# 0.2 实际使用：持久知识库与可核验问答
+# 实际使用：持久知识库与可核验问答（0.3）
 
-本阶段在原有解析器上补齐入库→存储→范围过滤→检索→选摘→引用校验→追踪的业务流程。不是另一个切分演示；也不声称自动完成等保测评。
+0.2补齐入库→存储→过滤→检索→选摘→引用→追踪，0.3进一步加入来源条件维护。[升级/条件写说明](CONDITIONAL_WRITES.md)是当前写入合同；无条件覆盖现在返回428，而不是静默接受。仍不声称自动完成等保测评。
 
 ## 1. 无密钥即可验证业务闭环
 
 先按 README 安装 `requirements.lock`，在仓库根目录运行：
 
 ```bash
-python -X utf8 -m compliance_rag.rag_cli ingest examples/knowledge/v1.md --source-name knowledge/v1.md --config examples/knowledge/config-v1.json
-python -X utf8 -m compliance_rag.rag_cli ingest examples/knowledge/v2.md --source-name knowledge/v2.md --config examples/knowledge/config-v2.json
+python -X utf8 -m compliance_rag.rag_cli ingest examples/knowledge/v1.md --source-name knowledge/v1.md --config examples/knowledge/config-v1.json --create-only
+python -X utf8 -m compliance_rag.rag_cli ingest examples/knowledge/v2.md --source-name knowledge/v2.md --config examples/knowledge/config-v2.json --create-only
 python -X utf8 -m compliance_rag.rag_cli inventory
 python -X utf8 -m compliance_rag.rag_cli ask "进入记录保留多久？" --standard-code TRAINING-POLICY --edition v2 --level 第三级 --security-class 安全物理环境
 ```
@@ -18,10 +18,12 @@ python -X utf8 -m compliance_rag.rag_cli ask "进入记录保留多久？" --sta
 删除同一个来源后，它的块与向量同事务级联删除：
 
 ```bash
-python -X utf8 -m compliance_rag.rag_cli remove knowledge/v2.md
+python -X utf8 -m compliance_rag.rag_cli source knowledge/v2.md
+# 审阅当前来源后，将返回的标签替换下面的占位；不要照抄尖括号
+python -X utf8 -m compliance_rag.rag_cli remove knowledge/v2.md --if-match "REPLACE_WITH_REVIEWED_ETAG"
 ```
 
-再次查询v2应无证据；不会回退到v1回答。相同内容/配置的重复导入返回 unchanged 且不增长修订号；不是免解析/免向量计算缓存。新内容替换同名来源；若解析/向量计算/事务失败，保留原来源。两个不同新修订并发导入按提交顺序生效，没有人工审批或预期版本 CAS 协议。
+再次查询v2应无证据；不会回退到v1回答。持有当前If-Match且内容/配置未变时返回unchanged、不增长修订号；create-only重复创建即412。陈旧编辑/删除条件在事务内拒绝；解析/向量/事务失败保留旧来源。尚无人工审批或自动合并；条件写不等于用户权限控制。
 
 ## 2. API 业务演示
 
@@ -29,14 +31,15 @@ python -X utf8 -m compliance_rag.rag_cli remove knowledge/v2.md
 python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
 ```
 
-另开终端运行 `python -X utf8 examples/rag_api_client.py`，或打开 `http://127.0.0.1:8000/docs`。
+演示前在服务端设置一个新的 `RAG_DB_PATH`，例如PowerShell：`$env:RAG_DB_PATH='output/demo-v03.sqlite3'`，然后启动服务。另开终端运行 `python -X utf8 examples/rag_api_client.py`，或打开 `http://127.0.0.1:8000/docs`。样本已有则停止，不为重复演示删除或覆盖旧数据。
 
 | 方法/路由 | 输入/用途 | 重要边界 |
 | --- | --- | --- |
 | POST /v1/parse | 保留原始结构解析接口 | 只有严格成功才能作为完整入库候选 |
-| POST /v1/library/ingest | text/source_name/config | 严格解析后替换同名来源；不接受服务端文件路径 |
+| POST /v1/library/ingest | text/source_name/config + 条件头 | 新建If-None-Match:*，修改If-Match；事务内比较后才提交 |
+| POST /v1/library/source | source_name | 私有规范化原文与source_etag；不存在404，不作任意文件读取 |
 | GET /v1/library | 来源、版本、级别/类别清单、修订号 | 仅单用户私有本地知识库 |
-| POST /v1/library/remove | source_name | 删除该来源所有块/向量；请先确认逻辑来源标签 |
+| POST /v1/library/remove | source_name + If-Match | 只删除仍未变化的来源；旧标签412，缺条件428 |
 | POST /v1/search | question/scope/retrieval/top_k | scope必填标准编号、版本和级别；类别可选 |
 | POST /v1/ask | search字段及 generation | extractive或llm；拒答也返回明确业务状态 |
 | GET /v1/traces/{trace_id} | 本次trace标识 | 不保存问题、正文、prompt或密钥 |
@@ -58,7 +61,7 @@ python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
 }
 ```
 
-`status=evidence` 是返回资料摘录，不是“系统判定已合规”。`status=refused` 时检查 reason：no_evidence、model_not_configured、model_abstained、invalid_model_citation、invalid_model_selection、knowledge_changed 或静态 upstream 错误码。业务拒答用HTTP200；结构/索引配置问题422、存储故障503、超字节/帧预算413。不要只判断HTTP成功。
+`status=evidence`是资料摘录，不是合规判定。`status=refused`检查reason：no_evidence、model_not_configured、model_abstained、invalid_model_citation、invalid_model_selection、knowledge_changed或静态upstream错误。业务拒答HTTP200；结构/索引问题422、存储503、字节/帧预算413；来源条件缺失428、陈旧412、歧义400。不要只判断HTTP成功。
 
 ## 3. 真实本地中文语义检索
 
