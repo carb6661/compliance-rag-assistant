@@ -11,6 +11,8 @@ private-docs/
 output/
 .env
 .env.*
+*.token
+access.json
 *.egg-info/
 dist/
 build/

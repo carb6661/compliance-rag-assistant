@@ -8,7 +8,8 @@ import sys
 from fastapi.testclient import TestClient
 import pytest
 
-from compliance_rag.api import app
+from compliance_rag.api import create_app
+from access_support import HEADERS, make_policy
 from compliance_rag.conditions import WriteCondition, WriteRejected
 from compliance_rag.evaluation import DATA, sample_config, seed
 from compliance_rag.generation import RagService
@@ -18,6 +19,7 @@ from compliance_rag.parser import canonical_json, normalize_text, parse_markdown
 NAME = "knowledge/v2.md"
 TEXT = (DATA/"v2.md").read_bytes().decode("utf-8")
 ROOT = Path(__file__).resolve().parents[1]
+app = create_app(make_policy())
 
 
 @pytest.fixture
@@ -277,7 +279,7 @@ def client(store):
     previous = app.state.rag_service
     app.state.rag_service = RagService(store)
     try:
-        with TestClient(app) as client:
+        with TestClient(app, headers=HEADERS) as client:
             yield client
     finally:
         app.state.rag_service = previous

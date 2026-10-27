@@ -1,6 +1,7 @@
 """Actual local app demo. --llm explicitly requests the server-configured external model."""
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -14,7 +15,11 @@ parser.add_argument("--llm", action="store_true")
 parser.add_argument("--retrieval", choices=["bm25","dense","hybrid"], default="bm25")
 args = parser.parse_args()
 
-with httpx.Client(base_url="http://127.0.0.1:8000", timeout=40, trust_env=False) as client:
+token = os.getenv("RAG_API_TOKEN")
+if not token:
+    raise SystemExit("Set RAG_API_TOKEN locally to a maintainer token; see docs/ACCESS_CONTROL.md.")
+with httpx.Client(base_url="http://127.0.0.1:8000", timeout=40, trust_env=False,
+                  headers={"Authorization": "Bearer " + token}) as client:
     for edition in ("v1","v2"):
         response = client.post("/v1/library/ingest", json={"text":(DATA/f"{edition}.md").read_bytes().decode(),
             "source_name":f"knowledge/{edition}.md", "config":sample_config(edition).model_dump()}, headers={"If-None-Match":"*"})

@@ -29,3 +29,4 @@ jobs:
       - run: python -X utf8 -m compliance_rag.rag_cli evaluate
       - run: python -X utf8 -m compliance_rag.live_smoke
       - run: python -X utf8 -m compliance_rag.conditional_demo
+      - run: python -X utf8 -m compliance_rag.access_demo

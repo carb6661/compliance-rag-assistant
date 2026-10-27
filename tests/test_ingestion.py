@@ -11,7 +11,8 @@ from langchain_core.documents import Document
 from pydantic import ValidationError
 import pytest
 
-from compliance_rag.api import app
+from compliance_rag.api import create_app
+from access_support import HEADERS, make_policy
 from compliance_rag.models import IngestConfig, MAX_BYTES
 from compliance_rag.parser import InputError, embedding_text, normalize_text, parse_file, parse_markdown
 from compliance_rag.__main__ import atomic_write, discover, load_config
@@ -20,7 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SAMPLE = ROOT / "examples/standards/synthetic-standard.md"
 BROKEN = ROOT / "examples/invalid/missing-class.md"
 PREFIX = "# 教学等保结构样例\n\n## 第二级安全要求\n\n### 安全物理环境\n\n"
-client = TestClient(app)
+app = create_app(make_policy())
+client = TestClient(app, headers=HEADERS)
 
 
 def check_slices(result, text):

@@ -3,9 +3,11 @@
 [![Tests](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**0.3：带条件知识维护的合规资料证据问答。保留0.2真实向量与精确引用，不作自动测评判定。**
+**0.4：有访问权限和任务额度的合规资料证据问答。保留条件维护、真实向量与精确引用，不作自动测评判定。**
 
-本轮继续深化同一RAG主项目：处理“两份旧草稿互相覆盖”和“用旧版本误删新资料”。新建必须create-only，修改/删除必须带来源ETag；提交时在SQLite事务内复核，覆盖正文和删除重建两种ABA都不能复活旧token。详见[问题、设计与升级合同](docs/CONDITIONAL_WRITES.md)。这是写入行为变更，旧客户端应先按指南迁移，原文档解析接口保持兼容。
+本轮在原仓库解决实际API缺口：回环地址不认证调用者，拿到ETag也不代表有权修改知识。现在所有业务接口默认锁定，配置随机令牌后区分查询、外部生成和维护角色；正文前限制身份频率/全局任务，worker真正退出后才归还占用，避免取消HTTP造成并发名额提前释放。详见[访问控制、启动和限制](docs/ACCESS_CONTROL.md)。仍为单进程共享知识库，**没有租户/文档ACL、硬截止或费用预算**。
+
+0.3的新建create-only、修改/删除来源ETag及事务内比较继续保留，详见[条件维护升级合同](docs/CONDITIONAL_WRITES.md)。0.4不改schema2，但HTTP客户端必须新增Authorization头，不能沿用匿名启动步骤。
 
 使用 Python、FastAPI、SQLite 和 LangChain Document，在原有标题层级入库上补齐资料导入、持久查询、更新/删除、范围过滤、BM25/真实中文向量/RRF检索、证据回答、引用校验与追踪。适合安全工程师先定位资料依据、再人工核验的私有本地工作流。
 
@@ -13,13 +15,14 @@
 
 ## 本次做深了什么
 
+- 将权限和容量边界接入真实RAG接口：reader不能维护或外传生成，默认锁定、正文前拒绝、逐身份滚动窗口、全局/身份/生成任务上限与取消后占用保留。
 - 入库不再结束于JSONL：SQLite保存来源、规范化原文、块与可选向量；同源事务替换和级联删除，重启可查。
 - 不靠大模型猜适用范围：标准编号、版本和安全级别必填，先过滤再计算检索分数。
 - 不盲信生成答案：模型只选连续原文，服务端核对citation ID/quote/区间，生成期间知识变更则拒绝旧答案。
 - 不用随机向量冒充语义：真实运行BGE-small-zh ONNX，模型及分词器摘要绑定索引，超512 token拒绝静默截断。
 - 不只展示成功：20问开发集保留“相关但缺少事实”的拒答失败，混合检索也没有被包装成必然优于Dense。
 
-详细入口：[实际运行与模型接入](docs/RAG_GUIDE.md) · [项目背景/设计/难点/亮点/简历模板](docs/PROJECT_STORY.md) · [条件维护证据](examples/evaluation/conditional-writes.json) · [真实向量评测](examples/evaluation/semantic-after.json) · [验证记录](docs/VALIDATION.md)
+详细入口：[访问控制与启动](docs/ACCESS_CONTROL.md) · [实际运行与模型接入](docs/RAG_GUIDE.md) · [项目背景/设计/难点/亮点/简历模板](docs/PROJECT_STORY.md) · [权限/额度证据](examples/evaluation/access-admission.json) · [真实向量评测](examples/evaluation/semantic-after.json) · [验证记录](docs/VALIDATION.md)
 
 ### 先验证一个完整业务流程
 
@@ -29,10 +32,10 @@
 python -X utf8 -m compliance_rag.rag_cli evaluate
 python -X utf8 -m compliance_rag.live_smoke
 python -X utf8 -m compliance_rag.conditional_demo
-python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
+python -X utf8 -m compliance_rag.access_demo
 ```
 
-先选择新的私有演示数据库，再启动服务；另开终端：`python -X utf8 examples/rag_api_client.py`。它只创建两份样本，已有来源即停止且不覆盖。查询v2第三级进入记录返回含“180天”的原文与来源区间，数字只是虚构练习。真实向量与LLM接入见使用指南。
+以上命令使用临时资料库，自动验证后退出。手动启动API请先按[权限指南](docs/ACCESS_CONTROL.md)在本机初始化随机令牌、加载服务端摘要策略，再用维护令牌运行 `examples/rag_api_client.py`；已有来源即停止且不覆盖。查询v2第三级进入记录返回含“180天”的原文与来源区间，数字只是虚构练习。模型配置仍仅服务端，不公开令牌或真实标准。
 
 ### 已测结果与没有解决的问题
 
@@ -190,23 +193,26 @@ python examples/filter_chunks.py output/demo.jsonl --level 第三级 --security-
 
 ## 5. FastAPI 本地接口
 
-```bash
-python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
+```powershell
+python -m compliance_rag.access output/access
+$env:RAG_ACCESS_JSON = Get-Content -Raw -Encoding utf8 output/access/access.json
+python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
 ```
 
 - GET /health：版本与阶段。
 - POST /v1/parse：接收 text、source_name、config 和 mode（strict/partial）。
-- GET /docs：接口文档；无需前端或付费服务。
+- GET /openapi.json：维护者带Bearer令牌读取接口文档；浏览器Swagger页关闭。
 
-另开终端（原解析API兼容示例）：
+另开终端（解析JSON格式保持不变，0.4新增认证）：
 
-```bash
+```powershell
+$env:RAG_API_TOKEN = (Get-Content -Raw -Encoding utf8 output/access/maintainer.token).Trim()
 python examples/api_client.py
 ```
 
 API 使用同一解析模块。严格模式有结构错误返回 422 且 documents=[]；显式 partial 模式返回 200/status=partial，调用方必须检查 status，不能只检查 HTTP 成功。请求模式错误返回 422，非 JSON 返回 415，超过 2 MiB 请求体返回 413；文本本身还限制 UTF-8 1 MiB。
 
-API不接受文件路径、远程URL或任意上传保存位置，不提供抓取功能。来源名称仅作相对标签，不会用于读文件。0.2新增 /v1/library、/v1/search、/v1/ask、/v1/traces，详见使用指南。**已加入单用户SQLite持久化，但仍无用户鉴权、租户隔离或并发配额；只绑定回环地址，不得直接暴露公网。** TrustedHost、版本过滤和大小限制都不能代替对象授权。
+API不接受文件路径、远程URL或任意上传保存位置，不提供抓取功能。来源名称仅作相对标签，不会用于读文件。/v1/library、/v1/search、/v1/ask、/v1/traces详见使用指南。**0.4已有静态令牌角色和单进程频率/并发额度，仍无租户/文档隔离、硬任务截止或费用预算；保持单worker回环运行。** TrustedHost、版本过滤和ETag都不能代替对象授权。
 
 ## 6. 修复前后实验
 
@@ -248,6 +254,8 @@ compliance_rag/
   api.py          本地FastAPI与有界/无歧义JSON请求
   knowledge.py    SQLite事务来源/块/向量存储与范围过滤
   conditions.py   来源条件、严格If-Match/If-None-Match合同
+  access.py       随机令牌初始化、角色、滚动频率和双生命周期租约
+  access_demo.py  实际RAG路由的权限/容量合成实验（本地selector替身）
   conditional_demo.py  旧草稿/ABA/并发写真实合成验证
   retrieval.py    中文词项BM25、余弦、RRF
   embeddings.py   可选真实中文BGE、文件摘要、token门禁

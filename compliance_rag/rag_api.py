@@ -12,6 +12,7 @@ from .knowledge import KnowledgeStore, SearchRequest
 from .models import IngestConfig, MAX_BYTES, StrictModel
 from .parser import InputError, source_label
 from .conditions import WriteRejected, from_headers
+from .access import work
 
 router = APIRouter()
 LOCK = threading.Lock()
@@ -52,43 +53,54 @@ def service(request):
 
 @router.get("/v1/library")
 def inventory(request: Request):
-    return JSONResponse(service(request).store.inventory(), headers={"Cache-Control":"no-store"})
+    with work(request):
+        return JSONResponse(service(request).store.inventory(), headers={"Cache-Control":"no-store"})
 
 
 @router.post("/v1/library/ingest")
 def ingest(payload: IngestRequest, request: Request):
-    condition = from_headers(request.headers)
-    result = service(request).store.ingest(payload.text, payload.source_name, payload.config, condition=condition)
-    return JSONResponse(result, headers={"ETag": result["source_etag"], "Cache-Control": "no-store"})
+    with work(request):
+        condition = from_headers(request.headers)
+        result = service(request).store.ingest(payload.text, payload.source_name, payload.config, condition=condition)
+        return JSONResponse(result, headers={"ETag": result["source_etag"], "Cache-Control": "no-store"})
 
 
 @router.post("/v1/library/source")
 def source(payload: DeleteRequest, request: Request):
-    result = service(request).store.source(payload.source_name)
-    if result is None:
-        return JSONResponse({"error": "source not found"}, status_code=404, headers={"Cache-Control": "no-store"})
-    return JSONResponse(result, headers={"ETag": result["source_etag"], "Cache-Control": "no-store"})
+    with work(request):
+        result = service(request).store.source(payload.source_name)
+        if result is None:
+            return JSONResponse({"error": "source not found"}, status_code=404, headers={"Cache-Control": "no-store"})
+        return JSONResponse(result, headers={"ETag": result["source_etag"], "Cache-Control": "no-store"})
 
 
 @router.post("/v1/library/remove")
 def remove(payload: DeleteRequest, request: Request):
-    condition = from_headers(request.headers, delete=True)
-    return JSONResponse(service(request).store.delete(payload.source_name, condition=condition),
-                        headers={"Cache-Control":"no-store"})
+    with work(request):
+        condition = from_headers(request.headers, delete=True)
+        return JSONResponse(service(request).store.delete(payload.source_name, condition=condition),
+                            headers={"Cache-Control":"no-store"})
 
 
 @router.post("/v1/search")
 def search(payload: SearchRequest, request: Request):
-    return service(request).store.search(payload)
+    with work(request):
+        return service(request).store.search(payload)
 
 
 @router.post("/v1/ask")
 def ask(payload: AskRequest, request: Request):
-    return service(request).ask(payload)
+    with work(request, external=payload.generation == "llm"):
+        return service(request).ask(payload)
 
 
 @router.get("/v1/traces/{trace_id}")
 def trace(trace_id: str, request: Request):
+    with work(request):
+        return read_trace(trace_id, request)
+
+
+def read_trace(trace_id, request):
     if len(trace_id) != 32 or any(c not in "0123456789abcdef" for c in trace_id):
         return JSONResponse({"error": "trace not found"}, status_code=404)
     result = service(request).store.trace(trace_id)

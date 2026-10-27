@@ -1,6 +1,6 @@
-# 实际使用：持久知识库与可核验问答（0.3）
+# 实际使用：持久知识库与可核验问答（0.4）
 
-0.2补齐入库→存储→过滤→检索→选摘→引用→追踪，0.3进一步加入来源条件维护。[升级/条件写说明](CONDITIONAL_WRITES.md)是当前写入合同；无条件覆盖现在返回428，而不是静默接受。仍不声称自动完成等保测评。
+0.2补齐入库→存储→过滤→检索→选摘→引用→追踪，0.3加入来源条件维护，0.4加入静态令牌角色与单进程请求/任务额度。先按[访问权限与启动指南](ACCESS_CONTROL.md)配置HTTP，再参考[条件写说明](CONDITIONAL_WRITES.md)；没有访问策略的API默认503锁定，缺认证401、角色不足403。仍不声称自动完成等保测评。
 
 ## 1. 无密钥即可验证业务闭环
 
@@ -27,22 +27,32 @@ python -X utf8 -m compliance_rag.rag_cli remove knowledge/v2.md --if-match "REPL
 
 ## 2. API 业务演示
 
-```bash
-python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
+```powershell
+python -m compliance_rag.access output/access
+$env:RAG_ACCESS_JSON = Get-Content -Raw -Encoding utf8 output/access/access.json
+$env:RAG_DB_PATH = 'output/demo-v04.sqlite3'
+python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
 ```
 
-演示前在服务端设置一个新的 `RAG_DB_PATH`，例如PowerShell：`$env:RAG_DB_PATH='output/demo-v03.sqlite3'`，然后启动服务。另开终端运行 `python -X utf8 examples/rag_api_client.py`，或打开 `http://127.0.0.1:8000/docs`。样本已有则停止，不为重复演示删除或覆盖旧数据。
+output/access必须是全新私有目录；已有令牌应直接加载，勿重复初始化或泄露。另开终端加载维护令牌再运行演示：
+
+```powershell
+$env:RAG_API_TOKEN = (Get-Content -Raw -Encoding utf8 output/access/maintainer.token).Trim()
+python -X utf8 examples/rag_api_client.py
+```
+
+样本已有则停止，不为重复演示删除或覆盖旧数据。Swagger页关闭，维护者可带认证读取/openapi.json。所有业务请求均须Authorization头；下面表格描述的JSON/条件头须在通过身份和角色校验后使用。
 
 | 方法/路由 | 输入/用途 | 重要边界 |
 | --- | --- | --- |
 | POST /v1/parse | 保留原始结构解析接口 | 只有严格成功才能作为完整入库候选 |
 | POST /v1/library/ingest | text/source_name/config + 条件头 | 新建If-None-Match:*，修改If-Match；事务内比较后才提交 |
 | POST /v1/library/source | source_name | 私有规范化原文与source_etag；不存在404，不作任意文件读取 |
-| GET /v1/library | 来源、版本、级别/类别清单、修订号 | 仅单用户私有本地知识库 |
+| GET /v1/library | 来源、版本、级别/类别清单、修订号 | 共享私有本地知识库，仅maintainer可读全量索引 |
 | POST /v1/library/remove | source_name + If-Match | 只删除仍未变化的来源；旧标签412，缺条件428 |
 | POST /v1/search | question/scope/retrieval/top_k | scope必填标准编号、版本和级别；类别可选 |
 | POST /v1/ask | search字段及 generation | extractive或llm；拒答也返回明确业务状态 |
-| GET /v1/traces/{trace_id} | 本次trace标识 | 不保存问题、正文、prompt或密钥 |
+| GET /v1/traces/{trace_id} | 本次trace标识 | 仅maintainer；不保存问题、正文、prompt或密钥 |
 
 请求例子：
 
@@ -61,7 +71,7 @@ python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
 }
 ```
 
-`status=evidence`是资料摘录，不是合规判定。`status=refused`检查reason：no_evidence、model_not_configured、model_abstained、invalid_model_citation、invalid_model_selection、knowledge_changed或静态upstream错误。业务拒答HTTP200；结构/索引问题422、存储503、字节/帧预算413；来源条件缺失428、陈旧412、歧义400。不要只判断HTTP成功。
+`status=evidence`是资料摘录，不是合规判定。`status=refused`检查reason：no_evidence、model_not_configured、model_abstained、invalid_model_citation、invalid_model_selection、knowledge_changed或静态upstream错误。业务拒答HTTP200；结构/索引问题422、存储503、字节/帧预算413；来源条件缺失428、陈旧412、歧义400；认证/角色/额度还可返回401/403/429。不要只判断HTTP成功，写请求不自动重试覆盖。
 
 ## 3. 真实本地中文语义检索
 
@@ -104,12 +114,13 @@ $env:RAG_ENABLE_EXTERNAL = '1'
 $env:RAG_LLM_BASE_URL = 'https://你的已授权服务域名/v1'
 $env:RAG_LLM_MODEL = '服务商实际提供的模型名称'
 $env:RAG_LLM_API_KEY = Read-Host '仅在本机输入 API Key' -MaskInput
-python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
+$env:RAG_ACCESS_JSON = Get-Content -Raw -Encoding utf8 output/access/access.json
+python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
 ```
 
-另开终端：`python -X utf8 examples/rag_api_client.py --llm`，如服务已启用语义库可再加 `--retrieval hybrid`。`.env` 被Git忽略但**不自动加载**，操作系统环境变量必须在启动进程前生效。若用旧版PowerShell，使用系统环境变量管理器或你的密钥管理工具，不要明文提交。
+已按第2节初始化访问策略并在另一个终端加载维护令牌后：`python -X utf8 examples/rag_api_client.py --llm`，如服务已启用语义库可再加 `--retrieval hybrid`。一般仅查询的客户端使用analyst令牌才能调用llm；reader请求llm会403。`.env` 被Git忽略但**不自动加载**，操作系统环境变量必须在启动进程前生效。若用旧版PowerShell，使用系统环境变量管理器或你的密钥管理工具，不要明文提交。
 
-客户端无法提交 base_url、api_key、model或数据库路径，这些多余字段会422拒绝。一般外部地址必须HTTPS；HTTP仅允许回环模型服务。禁用重定向和环境代理，连接5秒/读取30秒超时，只尝试一次；返回体最多64KiB，不回显上游正文/异常。30秒是每次读取超时，不是硬墙钟时限；可信服务商及网关仍需任务级截止时间、并发/成本配额和熔断。
+客户端无法提交 base_url、api_key、model或数据库路径，这些多余字段会422拒绝。一般外部地址必须HTTPS；HTTP仅允许回环模型服务。禁用重定向和环境代理，连接5秒/读取30秒超时，只尝试一次；返回体最多64KiB，不回显上游正文/异常。30秒是每次读取超时，不是硬墙钟时限；0.4新增进程内生成任务上限，但仍缺任务级硬截止、费用预算和熔断。
 
 适配 `POST <base_url>/chat/completions`、messages、`response_format={"type":"json_object"}` 与 choices[0].message.content。第三方兼容性并不由OpenAI文档保证；不支持此子集的服务会失败关闭，不静默删掉保护参数重试。本次未配置真实生成服务凭据，**真实LLM端到端、服务商模型质量/费用尚未验证**；已验证的是真实向量模型、真实本地HTTP和适配层确定性故障契约。
 
@@ -128,7 +139,7 @@ python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000
 - 原始文本和检索结果存本地，未加密；文件目录/备份权限须由运行者保障。
 - trace只保存ID、revision、状态/原因、检索/生成模式、候选/引用数量及耗时，保留最近1000条；追踪不是不可篡改审计。
 - 每库最多32来源、2000块、8MiB提交文本；输入1MiB、HTTP2MiB/4096帧、问题500字符、top_k≤5、上下文总6000字符。字符限制不等于token预算；BGE另按真实分词器512 token检查，超限拒绝而不静默截断。
-- 全部API无身份/租户隔离，仅回环单用户；标准版本过滤**不是对象授权**。生产接入需独立IdP/ACL、数据库/worker配额、日志保密和任务恢复。
+- API已有服务端令牌角色与单进程频率/任务限制；所有查询身份共享资料，仍无租户/文档隔离。标准版本过滤**不是对象授权**。仅单worker回环，后续需独立IdP/文档ACL、硬截止worker、日志保密和持久任务恢复。CLI/Python本地路径不走HTTP权限和额度。
 
 ## 参考与许可
 

@@ -1,8 +1,9 @@
-"""Loopback-only prototype interface. No file-path, URL-fetch or upload endpoint."""
+"""Authenticated loopback prototype. No file-path, URL-fetch or upload endpoint."""
 from typing import Literal
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.utils import get_openapi
 from pydantic import Field, field_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse
@@ -10,6 +11,7 @@ from starlette.responses import JSONResponse
 from .models import IngestConfig, MAX_BYTES, StrictModel
 from .parser import InputError, parse_markdown, source_label
 from .generation import strict_json
+from .access import AccessBoundary, AccessPolicy, AccessRejected, Admission, work
 
 MAX_BODY = 2 * MAX_BYTES
 
@@ -32,6 +34,9 @@ class BodyLimit:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        if scope["method"] != "POST":
+            # All inputs are POST JSON. Public liveness never buffers a GET body.
             return await self.app(scope, receive, send)
         raw_headers = scope.get("headers", [])
         if sum(key.lower() == b"content-type" for key, _ in raw_headers) > 1:
@@ -65,25 +70,27 @@ class BodyLimit:
         await self.app(scope, replay, send)
 
 
-app = FastAPI(title="Compliance RAG Assistant · 可溯源证据问答", version="0.3.0")
-app.state.rag_service = None
-app.add_middleware(BodyLimit)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
+router = APIRouter()
 
 
-@app.exception_handler(RequestValidationError)
 async def validation_error(request, exc):
     # FastAPI defaults can include rejected input. Keep diagnostics content-free.
     return JSONResponse({"error": "invalid request schema; no source content echoed"}, status_code=422)
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok", "phase": "conditional-knowledge-maintenance-and-qa", "version": "0.3.0"}
+@router.get("/health")
+def health(request: Request):
+    return {"status": "ok", "phase": "authenticated-bounded-qa", "version": "0.4.0",
+            "access_configured": bool(request.app.state.access_policy.principals)}
 
 
-@app.post("/v1/parse")
-def parse(request: ParseRequest):
+@router.post("/v1/parse")
+def parse(payload: ParseRequest, request: Request):
+    with work(request):
+        return parse_payload(payload)
+
+
+def parse_payload(request):
     try:
         result = parse_markdown(request.text, request.source_name, request.config)
     except (InputError, UnicodeError, RecursionError):
@@ -98,5 +105,36 @@ def parse(request: ParseRequest):
     return JSONResponse(body, status_code=422 if blocked else 200)
 
 
-from .rag_api import attach
-attach(app)
+def create_app(policy=None):
+    policy = AccessPolicy.from_env() if policy is None else policy
+    app = FastAPI(title="Compliance RAG Assistant · 可溯源证据问答", version="0.4.0",
+                  docs_url=None, redoc_url=None)
+    app.state.rag_service = None
+    app.state.access_policy = policy
+    app.state.admission = Admission(policy)
+    app.add_exception_handler(RequestValidationError, validation_error)
+    app.add_exception_handler(AccessRejected, lambda request, error: error.response())
+    app.add_exception_handler(Exception, lambda request, error: JSONResponse(
+        {"error": "internal service failure; no details echoed"}, status_code=500,
+        headers={"Cache-Control": "no-store"}))
+    app.include_router(router)
+    from .rag_api import attach
+    attach(app)
+    app.add_middleware(BodyLimit)
+    app.add_middleware(AccessBoundary, policy=policy, gate=app.state.admission)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
+    def authenticated_schema():
+        if app.openapi_schema is None:
+            schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
+            schema.setdefault("components", {})["securitySchemes"] = {
+                "LocalBearer": {"type": "http", "scheme": "bearer",
+                    "description": "Local server-issued opaque token. Roles and limits: docs/ACCESS_CONTROL.md. Not OAuth/OIDC."}}
+            schema["security"] = [{"LocalBearer": []}]
+            schema["paths"]["/health"]["get"]["security"] = []
+            app.openapi_schema = schema
+        return app.openapi_schema
+    app.openapi = authenticated_schema
+    return app
+
+
+app = create_app()

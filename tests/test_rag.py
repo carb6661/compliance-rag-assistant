@@ -10,13 +10,16 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from compliance_rag.api import app, BodyLimit
+from compliance_rag.api import create_app, BodyLimit
+from access_support import HEADERS, make_policy
 from compliance_rag.evaluation import DATA, evaluate, sample_config, seed
 from compliance_rag.generation import AskRequest, CompatibleGenerator, CompatibleSettings, ModelFailure, RagService, generator_from_env
 from compliance_rag.knowledge import KnowledgeStore, Scope, SearchRequest
 from compliance_rag.parser import InputError, normalize_text
 from compliance_rag.retrieval import rank, terms, unit_vector
 from compliance_rag.conditions import WriteCondition, WriteRejected
+
+app = create_app(make_policy())
 
 
 def current(store, source="knowledge/v2.md"):
@@ -339,7 +342,7 @@ def test_api_ingest_query_trace_remove(store):
     previous = app.state.rag_service
     app.state.rag_service = RagService(store)
     try:
-        with TestClient(app) as client:
+        with TestClient(app, headers=HEADERS) as client:
             assert client.get("/v1/library").status_code == 200
             response = client.post("/v1/ask", json=question().model_dump())
             assert response.status_code == 200
@@ -356,7 +359,7 @@ def test_api_ingest_query_trace_remove(store):
 def test_api_no_client_provider_path_or_ambiguous_json(store):
     previous, app.state.rag_service = app.state.rag_service, RagService(store)
     try:
-        with TestClient(app) as client:
+        with TestClient(app, headers=HEADERS) as client:
             response = client.post("/v1/ask",json={**question().model_dump(),"base_url":"PRIVATE_MARKER"})
             assert response.status_code == 422 and "PRIVATE_MARKER" not in response.text
             for data in ('{"question":"a","question":"b"}', '{"value":NaN}'):

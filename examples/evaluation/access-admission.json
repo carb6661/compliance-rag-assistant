@@ -1,0 +1,16 @@
+{
+  "transport": "in-process-asgi",
+  "samples": "original-synthetic-policy",
+  "real_llm": false,
+  "selector": "controlled-local-test-double",
+  "access_statuses": [401, 403, 200, 403],
+  "denied_write_preserved_revision": true,
+  "same_principal_requests": 8,
+  "accepted_responses": 1,
+  "capacity_rejections": 7,
+  "generation_calls": 1,
+  "other_principal_llm_when_full": 429,
+  "other_principal_local_when_llm_full": 200,
+  "slots_after_completion": 0,
+  "rate_statuses": [200, 200, 429]
+}
