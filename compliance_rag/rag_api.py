@@ -12,7 +12,8 @@ from .knowledge import KnowledgeStore, SearchRequest
 from .models import IngestConfig, MAX_BYTES, StrictModel
 from .parser import InputError, source_label
 from .conditions import WriteRejected, from_headers
-from .access import work
+from .access import work, read_identity
+from .authorization import ReaderGrant
 
 router = APIRouter()
 LOCK = threading.Lock()
@@ -36,6 +37,18 @@ class DeleteRequest(StrictModel):
     @classmethod
     def validate_label(cls, value):
         return source_label(value)
+
+
+class AccessUpdateRequest(DeleteRequest):
+    readers: list[str] = Field(max_length=16)
+
+    @field_validator("readers")
+    @classmethod
+    def unique_readers(cls, value):
+        import re
+        if len(set(value)) != len(value) or any(not re.fullmatch(r"[A-Za-z0-9_-]{1,32}", item) for item in value):
+            raise ValueError("invalid or duplicate readers")
+        return value
 
 
 def service(request):
@@ -85,13 +98,37 @@ def remove(payload: DeleteRequest, request: Request):
 @router.post("/v1/search")
 def search(payload: SearchRequest, request: Request):
     with work(request):
-        return service(request).store.search(payload)
+        result = service(request).store.search(payload, identity=read_identity(request))
+        if result.get("invalidated"):
+            return JSONResponse({"error": "knowledge_or_access_changed", "hits": [], "candidate_count": 0}, status_code=409)
+        return result
 
 
 @router.post("/v1/ask")
 def ask(payload: AskRequest, request: Request):
     with work(request, external=payload.generation == "llm"):
-        return service(request).ask(payload)
+        return service(request).ask(payload, identity=read_identity(request))
+
+
+@router.post("/v1/library/access")
+def source_access(payload: DeleteRequest, request: Request):
+    with work(request):
+        result = service(request).store.source_access(payload.source_name)
+        if result is None:
+            return JSONResponse({"error": "source not found"}, status_code=404)
+        return JSONResponse(result, headers={"ETag": result["access_etag"]})
+
+
+@router.post("/v1/library/access/update")
+def replace_access(payload: AccessUpdateRequest, request: Request):
+    with work(request):
+        condition = from_headers(request.headers, delete=True)
+        available = {p.id: p for p in request.app.state.access_policy.principals if p.role != "maintainer"}
+        if any(reader not in available for reader in payload.readers):
+            raise InputError("readers must be configured query principals")
+        grants = [ReaderGrant(reader, available[reader].token_sha256) for reader in payload.readers]
+        result = service(request).store.replace_access(payload.source_name, grants, condition=condition)
+        return JSONResponse(result, headers={"ETag": result["access_etag"]})
 
 
 @router.get("/v1/traces/{trace_id}")

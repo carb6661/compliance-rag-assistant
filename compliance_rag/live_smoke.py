@@ -48,6 +48,12 @@ def main():
                     "edition":"v2","security_level":"第三级","security_class":"安全物理环境"}}
                 response = client.post("/v1/ask", json=payload)
                 assert response.status_code == 200 and "180天" in response.json()["answer"]
+                initial_reader = client.post("/v1/ask", json=payload, headers=reader_headers)
+                assert initial_reader.json()["reason"] == "no_evidence" and not initial_reader.json()["retrieval"]["hits"]
+                acl = client.post("/v1/library/access", json={"source_name": "knowledge/v2.md"})
+                granted = client.post("/v1/library/access/update", json={"source_name": "knowledge/v2.md", "readers": ["reader"]},
+                                      headers={"If-Match": acl.headers["etag"]})
+                assert granted.status_code == 200
                 reader_ask = client.post("/v1/ask", json=payload, headers=reader_headers)
                 reader_llm = client.post("/v1/ask", json={**payload, "generation": "llm"}, headers=reader_headers)
                 assert [unauthorized.status_code,denied.status_code,reader_ask.status_code,reader_llm.status_code] == [401,403,200,403]
@@ -63,6 +69,8 @@ def main():
                 latest = client.post("/v1/library/source",json={"source_name":"knowledge/v2.md"})
                 assert "181天" in latest.json()["normalized_text"]
                 assert latest.headers["etag"] == updated.headers["etag"] != indexed.headers["etag"]
+                reset_reader = client.post("/v1/ask", json=payload, headers=reader_headers)
+                assert reset_reader.json()["reason"] == "no_evidence"
                 removed = client.post("/v1/library/remove",json={"source_name":"knowledge/v2.md"},
                                       headers={"If-Match": updated.headers["etag"]})
                 empty = client.post("/v1/ask",json=payload)
@@ -72,6 +80,7 @@ def main():
                     "indexed_chunks":6,"answer_contains":"180天", "after_delete":"no_evidence",
                     "conditional_statuses":[missing.status_code,updated.status_code,stale.status_code,stale_delete.status_code],
                     "access_statuses":[unauthorized.status_code,denied.status_code,reader_ask.status_code,reader_llm.status_code],
+                    "source_acl":{"before_grant":"no_evidence","after_grant":"evidence","after_replacement":"no_evidence"},
                     "latest_source_contains":"181天", "etag_changed":True}, ensure_ascii=False))
         finally:
             server.should_exit = True

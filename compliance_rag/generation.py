@@ -125,15 +125,19 @@ class RagService:
     def __init__(self, store, generator=None):
         self.store, self.generator = store, generator
 
-    def ask(self, request: AskRequest):
+    def ask(self, request: AskRequest, *, identity=None):
         started = time.perf_counter()
-        search = self.store.search(request)
+        search = self.store.search(request, identity=identity)
         retrieval_ms = (time.perf_counter() - started) * 1000
         result = {"trace_id": uuid.uuid4().hex, "status": "refused", "reason": "no_evidence",
                   "generation": request.generation, "revision": search["revision"], "answer": "",
                   "citations": [], "retrieval": search, "limitations": [
                       "来源未审核；资料引用不构成合规结论。", "原文存在不等于与问题相关；未做语义蕴含证明。"]}
-        if search["hits"]:
+        if search.get("invalidated"):
+            result["reason"] = "knowledge_changed"
+        elif search["hits"] and not self.store.publication_valid(search, identity):
+            result.update(reason="knowledge_changed", retrieval={**search, "hits": [], "candidate_count": 0})
+        elif search["hits"]:
             if request.generation == "llm" and self.generator is None:
                 result["reason"] = "model_not_configured"
             else:
@@ -159,9 +163,9 @@ class RagService:
                 except (ValidationError, ValueError, TypeError, RecursionError):
                     result["reason"] = "invalid_model_selection"
         # Do not publish an answer computed against a collection replaced while the model ran.
-        if self.store.revision() != search["revision"]:
+        if not self.store.publication_valid(search, identity):
             result.update(status="refused", reason="knowledge_changed", answer="", citations=[],
-                          retrieval={**search, "hits": []})
+                          retrieval={**search, "hits": [], "candidate_count": 0})
         total_ms = (time.perf_counter() - started) * 1000
         result["timings"] = {"retrieval_ms": round(retrieval_ms, 3),
                              "generation_and_validation_ms": round(total_ms-retrieval_ms, 3),

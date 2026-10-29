@@ -238,7 +238,7 @@ def test_schema_one_migration_preserves_rows_revision_and_text(tmp_path):
     assert store.source(NAME)["normalized_text"] == normalize_text(TEXT)
     with store.connect() as db:
         assert [tuple(row) for row in db.execute("SELECT * FROM chunks ORDER BY chunk_id")] == before
-        assert db.execute("SELECT value FROM settings WHERE key='schema'").fetchone()[0] == "2"
+        assert db.execute("SELECT value FROM settings WHERE key='schema'").fetchone()[0] == "3"
     assert KnowledgeStore(path).source(NAME)["source_etag"] == store.source(NAME)["source_etag"]
 
 

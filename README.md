@@ -3,11 +3,11 @@
 [![Tests](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**0.4：有访问权限和任务额度的合规资料证据问答。保留条件维护、真实向量与精确引用，不作自动测评判定。**
+**0.5：按来源授权的合规资料证据问答。保留条件维护、任务额度、真实向量与精确引用，不作自动测评判定。**
 
-本轮在原仓库解决实际API缺口：回环地址不认证调用者，拿到ETag也不代表有权修改知识。现在所有业务接口默认锁定，配置随机令牌后区分查询、外部生成和维护角色；正文前限制身份频率/全局任务，worker真正退出后才归还占用，避免取消HTTP造成并发名额提前释放。详见[访问控制、启动和限制](docs/ACCESS_CONTROL.md)。仍为单进程共享知识库，**没有租户/文档ACL、硬截止或费用预算**。
+本轮在原项目解决“有查询角色就能看整库”的实际缺口：SQLite保存绑定身份/当前凭据的来源读权限，先做scope+ACL过滤再评分和构造模型材料；授权更新使用独立ETag，生成中撤权会清空旧证据，正文/配置替换会清空读权限并要求重审。详见[来源授权设计、操作与升级](docs/SOURCE_AUTHORIZATION.md)。实际接入现有RAG，不另建内存权限演示。
 
-0.3的新建create-only、修改/删除来源ETag及事务内比较继续保留，详见[条件维护升级合同](docs/CONDITIONAL_WRITES.md)。0.4不改schema2，但HTTP客户端必须新增Authorization头，不能沿用匿名启动步骤。
+0.3的来源条件维护及0.4默认锁定、随机令牌/角色、任务准入继续保留。**0.5升级至schema3，旧资料不会自动向普通查询者开放**；先停止旧进程、私有备份，再由维护者逐来源审阅授权。source ETag保持原算法，ACL使用单独access ETag；不要混用或自动重试覆盖。仍只单worker回环，无真实IdP、租户命名空间、硬截止或费用预算。
 
 使用 Python、FastAPI、SQLite 和 LangChain Document，在原有标题层级入库上补齐资料导入、持久查询、更新/删除、范围过滤、BM25/真实中文向量/RRF检索、证据回答、引用校验与追踪。适合安全工程师先定位资料依据、再人工核验的私有本地工作流。
 
@@ -15,6 +15,8 @@
 
 ## 本次做深了什么
 
+- 资料级权限接入真实检索：SQL阶段排除未授权块及向量，BM25统计也限于授权语料；同标准/版本/级别的不同文件可分别授权。
+- 权限与内容生命周期绑定：令牌轮换不继承、正文/配置变更清空读者、删除级联；授权CAS及修订复核覆盖旧授权和中途撤权。
 - 将权限和容量边界接入真实RAG接口：reader不能维护或外传生成，默认锁定、正文前拒绝、逐身份滚动窗口、全局/身份/生成任务上限与取消后占用保留。
 - 入库不再结束于JSONL：SQLite保存来源、规范化原文、块与可选向量；同源事务替换和级联删除，重启可查。
 - 不靠大模型猜适用范围：标准编号、版本和安全级别必填，先过滤再计算检索分数。
@@ -22,7 +24,7 @@
 - 不用随机向量冒充语义：真实运行BGE-small-zh ONNX，模型及分词器摘要绑定索引，超512 token拒绝静默截断。
 - 不只展示成功：20问开发集保留“相关但缺少事实”的拒答失败，混合检索也没有被包装成必然优于Dense。
 
-详细入口：[访问控制与启动](docs/ACCESS_CONTROL.md) · [实际运行与模型接入](docs/RAG_GUIDE.md) · [项目背景/设计/难点/亮点/简历模板](docs/PROJECT_STORY.md) · [权限/额度证据](examples/evaluation/access-admission.json) · [真实向量评测](examples/evaluation/semantic-after.json) · [验证记录](docs/VALIDATION.md)
+详细入口：[来源授权与升级](docs/SOURCE_AUTHORIZATION.md) · [令牌启动](docs/ACCESS_CONTROL.md) · [实际运行与模型接入](docs/RAG_GUIDE.md) · [背景/设计/难点/亮点/简历模板](docs/PROJECT_STORY.md) · [来源权限证据](examples/evaluation/source-access.json) · [真实向量评测](examples/evaluation/semantic-after.json) · [验证记录](docs/VALIDATION.md)
 
 ### 先验证一个完整业务流程
 
@@ -33,9 +35,12 @@ python -X utf8 -m compliance_rag.rag_cli evaluate
 python -X utf8 -m compliance_rag.live_smoke
 python -X utf8 -m compliance_rag.conditional_demo
 python -X utf8 -m compliance_rag.access_demo
+python -X utf8 -m compliance_rag.source_access_demo
 ```
 
 以上命令使用临时资料库，自动验证后退出。手动启动API请先按[权限指南](docs/ACCESS_CONTROL.md)在本机初始化随机令牌、加载服务端摘要策略，再用维护令牌运行 `examples/rag_api_client.py`；已有来源即停止且不覆盖。查询v2第三级进入记录返回含“180天”的原文与来源区间，数字只是虚构练习。模型配置仍仅服务端，不公开令牌或真实标准。
+
+维护者演示不代表普通用户能查整库。reader/analyst使用前，按[来源权限指南](docs/SOURCE_AUTHORIZATION.md)审阅正文，再用 `examples/manage_source_access.py`读取ACL并携带access_etag设置读者；未授权返回no_evidence，合法内容更新后也需重审。
 
 ### 已测结果与没有解决的问题
 
@@ -212,7 +217,7 @@ python examples/api_client.py
 
 API 使用同一解析模块。严格模式有结构错误返回 422 且 documents=[]；显式 partial 模式返回 200/status=partial，调用方必须检查 status，不能只检查 HTTP 成功。请求模式错误返回 422，非 JSON 返回 415，超过 2 MiB 请求体返回 413；文本本身还限制 UTF-8 1 MiB。
 
-API不接受文件路径、远程URL或任意上传保存位置，不提供抓取功能。来源名称仅作相对标签，不会用于读文件。/v1/library、/v1/search、/v1/ask、/v1/traces详见使用指南。**0.4已有静态令牌角色和单进程频率/并发额度，仍无租户/文档隔离、硬任务截止或费用预算；保持单worker回环运行。** TrustedHost、版本过滤和ETag都不能代替对象授权。
+API不接受文件路径、远程URL或任意上传保存位置，不提供抓取功能。来源名称仅作相对标签，不会用于读文件。/v1/library、/v1/search、/v1/ask、/v1/traces及来源ACL接口详见使用指南。**已有来源文件读ACL、静态角色和单进程额度，仍无租户命名空间、段落ACL、硬任务截止或费用预算；保持单worker回环运行。** TrustedHost、版本过滤和ETag都不能代替授权。
 
 ## 6. 修复前后实验
 
@@ -255,6 +260,8 @@ compliance_rag/
   knowledge.py    SQLite事务来源/块/向量存储与范围过滤
   conditions.py   来源条件、严格If-Match/If-None-Match合同
   access.py       随机令牌初始化、角色、滚动频率和双生命周期租约
+  authorization.py  服务端只读身份与凭据绑定的来源授权
+  source_access_demo.py  真实RAG来源隔离/撤权/更新重审实验
   access_demo.py  实际RAG路由的权限/容量合成实验（本地selector替身）
   conditional_demo.py  旧草稿/ABA/并发写真实合成验证
   retrieval.py    中文词项BM25、余弦、RRF

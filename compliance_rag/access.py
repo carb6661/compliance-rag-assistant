@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from starlette.responses import JSONResponse
 
 from .generation import strict_json
+from .authorization import ReadIdentity
 
 
 class Limits(BaseModel):
@@ -173,6 +174,7 @@ def permitted(principal, method, path):
     query = {("POST", "/v1/search"), ("POST", "/v1/ask")}
     maintenance = {("POST", "/v1/parse"), ("GET", "/v1/library"),
                    ("POST", "/v1/library/source"), ("POST", "/v1/library/ingest"),
+                   ("POST", "/v1/library/access"), ("POST", "/v1/library/access/update"),
                    ("POST", "/v1/library/remove"), ("GET", "/openapi.json")}
     return ((method, path) in query or (principal.role == "maintainer" and (
         (method, path) in maintenance or (method == "GET" and path.startswith("/v1/traces/")))))
@@ -216,6 +218,11 @@ class AccessBoundary:
 
 def work(request, *, external=False):
     return request.state.access_lease.work(external=external)
+
+
+def read_identity(request):
+    principal = request.state.access_lease.principal
+    return ReadIdentity(principal.id, principal.token_sha256, principal.role == "maintainer")
 
 
 def initialize(directory):

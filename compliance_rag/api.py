@@ -80,7 +80,7 @@ async def validation_error(request, exc):
 
 @router.get("/health")
 def health(request: Request):
-    return {"status": "ok", "phase": "authenticated-bounded-qa", "version": "0.4.0",
+    return {"status": "ok", "phase": "source-authorized-evidence-qa", "version": "0.5.0",
             "access_configured": bool(request.app.state.access_policy.principals)}
 
 
@@ -107,7 +107,7 @@ def parse_payload(request):
 
 def create_app(policy=None):
     policy = AccessPolicy.from_env() if policy is None else policy
-    app = FastAPI(title="Compliance RAG Assistant · 可溯源证据问答", version="0.4.0",
+    app = FastAPI(title="Compliance RAG Assistant · 可溯源证据问答", version="0.5.0",
                   docs_url=None, redoc_url=None)
     app.state.rag_service = None
     app.state.access_policy = policy

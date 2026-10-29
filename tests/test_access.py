@@ -14,6 +14,8 @@ from compliance_rag.api import create_app
 from compliance_rag.evaluation import seed
 from compliance_rag.generation import RagService
 from compliance_rag.knowledge import KnowledgeStore
+from compliance_rag.authorization import ReaderGrant
+from compliance_rag.conditions import WriteCondition
 
 TOKENS = {role: "synthetic_" + role + "_" + "b" * 43 for role in ("reader", "analyst", "maintainer")}
 QUESTION = {"question": "进入记录保留多久？", "scope": {
@@ -34,6 +36,8 @@ def app(tmp_path):
     app = create_app(policy())
     store = KnowledgeStore(tmp_path/"data.sqlite3")
     seed(store)
+    grants = [ReaderGrant(p.id, p.token_sha256) for p in app.state.access_policy.principals if p.role != "maintainer"]
+    store.replace_access("knowledge/v2.md", grants, condition=WriteCondition.match(store.source_access("knowledge/v2.md")["access_etag"]))
     app.state.rag_service = RagService(store)
     return app
 
@@ -333,7 +337,7 @@ def test_worker_and_body_failures_release_slots_but_consume_rate(app):
     with TestClient(app) as client:
         for body in ("not-json", '{"x":1,"x":2}', "{}"):
             assert client.post("/v1/ask", content=body, headers={**headers("reader"), "Content-Type": "application/json"}).status_code == 422
-        app.state.rag_service.store.search = lambda _: (_ for _ in ()).throw(ValueError("PRIVATE"))
+        app.state.rag_service.store.search = lambda _, **kwargs: (_ for _ in ()).throw(ValueError("PRIVATE"))
         result = client.post("/v1/search", json=QUESTION, headers=headers("reader"))
         assert result.status_code == 503 and "PRIVATE" not in result.text
     assert app.state.admission.total == 0
@@ -393,7 +397,7 @@ def test_body_budget_and_unexpected_worker_failure_release_capacity(app):
     with TestClient(app, raise_server_exceptions=False) as client:
         big = client.post("/v1/ask", content="x"*(MAX_BODY+1), headers={**headers("reader"), "Content-Type": "application/json"})
         assert big.status_code == 413
-        app.state.rag_service.store.search = lambda _: (_ for _ in ()).throw(RuntimeError("PRIVATE"))
+        app.state.rag_service.store.search = lambda _, **kwargs: (_ for _ in ()).throw(RuntimeError("PRIVATE"))
         failed = client.post("/v1/ask", json=QUESTION, headers=headers("reader"))
         assert failed.status_code == 500 and "PRIVATE" not in failed.text
         assert failed.headers["cache-control"] == "no-store"

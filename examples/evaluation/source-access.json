@@ -1,0 +1,24 @@
+{
+  "transport": "in-process-asgi",
+  "real_llm": false,
+  "selector": "controlled-local-test-double",
+  "documents": 2,
+  "chunks": 2,
+  "same_business_scope": true,
+  "before_grant_candidates": 0,
+  "alice_sources": ["teams/a.md"],
+  "bob_sources": ["teams/b.md"],
+  "selector_sources": ["teams/a.md"],
+  "revoked_during_selection": {
+    "reason": "knowledge_changed",
+    "answer": "",
+    "citations": [],
+    "retrieval_hits": [],
+    "candidate_count": 0
+  },
+  "stale_access_update": 412,
+  "replacement_grants_cleared": 1,
+  "replacement_before_review": "no_evidence",
+  "replacement_after_review_contains": "181天",
+  "grant_persisted_after_reopen": true
+}

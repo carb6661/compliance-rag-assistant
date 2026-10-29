@@ -14,6 +14,8 @@ from .api import create_app
 from .evaluation import seed
 from .generation import RagService
 from .knowledge import KnowledgeStore
+from .authorization import ReaderGrant
+from .conditions import WriteCondition
 
 
 def demonstrate():
@@ -28,6 +30,8 @@ def demonstrate():
         app = create_app(AccessPolicy(AccessSettings(principals=entries)))
         store = KnowledgeStore(Path(directory)/"knowledge.sqlite3")
         seed(store)
+        store.replace_access("knowledge/v2.md", [ReaderGrant(e["id"], e["token_sha256"]) for e in entries if e["role"] != "maintainer"],
+                             condition=WriteCondition.match(store.source_access("knowledge/v2.md")["access_etag"]))
         revision = store.revision()
         app.state.rag_service = RagService(store)
         with TestClient(app) as client:

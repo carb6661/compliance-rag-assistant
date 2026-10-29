@@ -1,6 +1,6 @@
-# 实际使用：持久知识库与可核验问答（0.4）
+# 实际使用：持久知识库与可核验问答（0.5）
 
-0.2补齐入库→存储→过滤→检索→选摘→引用→追踪，0.3加入来源条件维护，0.4加入静态令牌角色与单进程请求/任务额度。先按[访问权限与启动指南](ACCESS_CONTROL.md)配置HTTP，再参考[条件写说明](CONDITIONAL_WRITES.md)；没有访问策略的API默认503锁定，缺认证401、角色不足403。仍不声称自动完成等保测评。
+0.2补齐业务闭环，0.3加入来源条件维护，0.4加入令牌角色/单进程额度，0.5加入持久来源读ACL及更新重审。先按[令牌启动](ACCESS_CONTROL.md)配置HTTP，再按[来源权限与schema3升级](SOURCE_AUTHORIZATION.md)审阅授权；写入继续使用[条件合同](CONDITIONAL_WRITES.md)。未配置API503锁定、缺认证401、角色不足403；查询者没有来源授权时返回no_evidence。仍不声称自动完成等保测评。
 
 ## 1. 无密钥即可验证业务闭环
 
@@ -23,7 +23,7 @@ python -X utf8 -m compliance_rag.rag_cli source knowledge/v2.md
 python -X utf8 -m compliance_rag.rag_cli remove knowledge/v2.md --if-match "REPLACE_WITH_REVIEWED_ETAG"
 ```
 
-再次查询v2应无证据；不会回退到v1回答。持有当前If-Match且内容/配置未变时返回unchanged、不增长修订号；create-only重复创建即412。陈旧编辑/删除条件在事务内拒绝；解析/向量/事务失败保留旧来源。尚无人工审批或自动合并；条件写不等于用户权限控制。
+再次查询v2应无证据；不会回退到v1回答。持有当前If-Match且内容/配置未变时返回unchanged、不增长修订号且保留ACL；create-only重复创建即412。实际修改正文/配置会清空普通读者授权并返回reader_grants_cleared，须人工审阅后重新授权。陈旧条件在事务内拒绝；解析/向量/事务失败保留旧来源和ACL。没有审批工作流或自动合并；条件写不等于用户权限控制。CLI是可信本地路径，不执行HTTP读ACL。
 
 ## 2. API 业务演示
 
@@ -43,6 +43,8 @@ python -X utf8 examples/rag_api_client.py
 
 样本已有则停止，不为重复演示删除或覆盖旧数据。Swagger页关闭，维护者可带认证读取/openapi.json。所有业务请求均须Authorization头；下面表格描述的JSON/条件头须在通过身份和角色校验后使用。
 
+这个全流程客户端使用maintainer，所以可查全库。若用reader/analyst查询，先按[来源权限指南](SOURCE_AUTHORIZATION.md)运行manage_source_access.py读取ACL、审阅正文并携带access ETag设置读者；未授权不会因scope匹配而得到证据。不要用维护者权限展示普通用户隔离。
+
 | 方法/路由 | 输入/用途 | 重要边界 |
 | --- | --- | --- |
 | POST /v1/parse | 保留原始结构解析接口 | 只有严格成功才能作为完整入库候选 |
@@ -50,7 +52,9 @@ python -X utf8 examples/rag_api_client.py
 | POST /v1/library/source | source_name | 私有规范化原文与source_etag；不存在404，不作任意文件读取 |
 | GET /v1/library | 来源、版本、级别/类别清单、修订号 | 共享私有本地知识库，仅maintainer可读全量索引 |
 | POST /v1/library/remove | source_name + If-Match | 只删除仍未变化的来源；旧标签412，缺条件428 |
-| POST /v1/search | question/scope/retrieval/top_k | scope必填标准编号、版本和级别；类别可选 |
+| POST /v1/library/access | source_name | maintainer读取读者/来源状态及独立access_etag |
+| POST /v1/library/access/update | source_name/readers + access If-Match | maintainer完整替换读者，限定已配置的查询身份；正文更新后重审 |
+| POST /v1/search | question/scope/retrieval/top_k | scope+服务端身份ACL先过滤；快照变化409且无证据 |
 | POST /v1/ask | search字段及 generation | extractive或llm；拒答也返回明确业务状态 |
 | GET /v1/traces/{trace_id} | 本次trace标识 | 仅maintainer；不保存问题、正文、prompt或密钥 |
 
@@ -139,7 +143,7 @@ python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000 --workers 
 - 原始文本和检索结果存本地，未加密；文件目录/备份权限须由运行者保障。
 - trace只保存ID、revision、状态/原因、检索/生成模式、候选/引用数量及耗时，保留最近1000条；追踪不是不可篡改审计。
 - 每库最多32来源、2000块、8MiB提交文本；输入1MiB、HTTP2MiB/4096帧、问题500字符、top_k≤5、上下文总6000字符。字符限制不等于token预算；BGE另按真实分词器512 token检查，超限拒绝而不静默截断。
-- API已有服务端令牌角色与单进程频率/任务限制；所有查询身份共享资料，仍无租户/文档隔离。标准版本过滤**不是对象授权**。仅单worker回环，后续需独立IdP/文档ACL、硬截止worker、日志保密和持久任务恢复。CLI/Python本地路径不走HTTP权限和额度。
+- API已有静态角色、持久来源读ACL与单进程额度。没有租户命名空间、段落权限或真实IdP；来源管理员可看全库。标准版本过滤**不是来源授权**。仅单worker回环，后续需IdP/操作审计、硬截止worker和持久任务恢复。CLI/Python本地路径不走HTTP权限和额度，直接库调用者须可信。
 
 ## 参考与许可
 

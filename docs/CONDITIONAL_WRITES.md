@@ -1,6 +1,6 @@
 # 0.3：避免知识维护中的丢失更新与误删除
 
-本页记录0.3引入、0.4仍保留的ETag合同。当前业务HTTP还必须先通过[0.4访问权限与额度](ACCESS_CONTROL.md)，ETag从来不是认证凭据；0.4不修改schema2或此处的来源标签算法。
+本页记录0.3引入、0.5仍保留的来源ETag合同。业务HTTP须通过[角色与额度](ACCESS_CONTROL.md)及[来源读ACL](SOURCE_AUTHORIZATION.md)，ETag不是认证凭据。0.5升级schema3，保留原source_etag算法，授权使用独立access_etag；正文/配置替换清空普通读者授权，需要重新审阅。
 
 ## 背景：事务原子不等于没有丢失更新
 
