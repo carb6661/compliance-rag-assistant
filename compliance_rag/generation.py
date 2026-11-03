@@ -117,8 +117,9 @@ def generator_from_env():
         return None
     if not all(os.getenv(key) for key in ("RAG_LLM_BASE_URL", "RAG_LLM_MODEL", "RAG_LLM_API_KEY")):
         return None
-    return CompatibleGenerator(CompatibleSettings(
-        os.environ["RAG_LLM_BASE_URL"], os.environ["RAG_LLM_MODEL"], os.environ["RAG_LLM_API_KEY"]))
+    from .isolated_generation import IsolatedGenerator, WorkerLimits
+    return IsolatedGenerator(CompatibleSettings(os.environ["RAG_LLM_BASE_URL"], os.environ["RAG_LLM_MODEL"],
+        os.environ["RAG_LLM_API_KEY"]), WorkerLimits.from_env())
 
 
 class RagService:

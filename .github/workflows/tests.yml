@@ -31,3 +31,4 @@ jobs:
       - run: python -X utf8 -m compliance_rag.conditional_demo
       - run: python -X utf8 -m compliance_rag.access_demo
       - run: python -X utf8 -m compliance_rag.source_access_demo
+      - run: python -X utf8 -m compliance_rag.generation_demo

@@ -1,0 +1,18 @@
+{
+  "transport": "in-process-asgi-api+real-loopback-provider-http",
+  "real_llm": false,
+  "provider": "original-synthetic-copy-fixture",
+  "worker": "actual-isolated-python-child",
+  "deadline_seconds": 6,
+  "success": "evidence_quotes",
+  "bytes_arrived_before_deadline": true,
+  "overlapping_request": 429,
+  "timeout_reason": "generation_deadline_exceeded",
+  "timeout_answer": "",
+  "timeout_citations": [],
+  "occupied_after_timeout": 0,
+  "quarantined_after_timeout": 0,
+  "api_slots_after_timeout": 0,
+  "trace_reason": "generation_deadline_exceeded",
+  "next_request": "evidence_quotes"
+}

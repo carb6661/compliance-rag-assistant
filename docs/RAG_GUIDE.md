@@ -1,6 +1,8 @@
-# 实际使用：持久知识库与可核验问答（0.5）
+# 实际使用：持久知识库与可核验问答（0.6）
 
 0.2补齐业务闭环，0.3加入来源条件维护，0.4加入令牌角色/单进程额度，0.5加入持久来源读ACL及更新重审。先按[令牌启动](ACCESS_CONTROL.md)配置HTTP，再按[来源权限与schema3升级](SOURCE_AUTHORIZATION.md)审阅授权；写入继续使用[条件合同](CONDITIONAL_WRITES.md)。未配置API503锁定、缺认证401、角色不足403；查询者没有来源授权时返回no_evidence。仍不声称自动完成等保测评。
+
+0.6不改数据库，标准外部生成默认经固定子进程，加入[生成阶段墙钟预算与回收](GENERATION_WORKERS.md)。不是全请求硬时限；真实服务未配置时，可用不连接外部模型的generation_demo验证本地协议/超时/恢复。
 
 ## 1. 无密钥即可验证业务闭环
 
@@ -118,13 +120,15 @@ $env:RAG_ENABLE_EXTERNAL = '1'
 $env:RAG_LLM_BASE_URL = 'https://你的已授权服务域名/v1'
 $env:RAG_LLM_MODEL = '服务商实际提供的模型名称'
 $env:RAG_LLM_API_KEY = Read-Host '仅在本机输入 API Key' -MaskInput
+$env:RAG_LLM_DEADLINE_SECONDS = '45'
+$env:RAG_LLM_WORKERS = '1'
 $env:RAG_ACCESS_JSON = Get-Content -Raw -Encoding utf8 output/access/access.json
 python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
 ```
 
 已按第2节初始化访问策略并在另一个终端加载维护令牌后：`python -X utf8 examples/rag_api_client.py --llm`，如服务已启用语义库可再加 `--retrieval hybrid`。一般仅查询的客户端使用analyst令牌才能调用llm；reader请求llm会403。`.env` 被Git忽略但**不自动加载**，操作系统环境变量必须在启动进程前生效。若用旧版PowerShell，使用系统环境变量管理器或你的密钥管理工具，不要明文提交。
 
-客户端无法提交 base_url、api_key、model或数据库路径，这些多余字段会422拒绝。一般外部地址必须HTTPS；HTTP仅允许回环模型服务。禁用重定向和环境代理，连接5秒/读取30秒超时，只尝试一次；返回体最多64KiB，不回显上游正文/异常。30秒是每次读取超时，不是硬墙钟时限；0.4新增进程内生成任务上限，但仍缺任务级硬截止、费用预算和熔断。
+客户端不能提交base_url、api_key、model、数据库路径、预算或进程命令，多余字段422。外部地址必须HTTPS，HTTP仅回环；禁重定向/环境代理，连接5秒/读取30秒，只尝试一次，响应64KiB。0.6另由父进程监督外部选摘默认45秒的墙钟预算，超时终止自有子进程并确认回收；回收不确定则保留隔离容量。预算仅覆盖选摘阶段，OS创建/清理可能超出；无全请求SLA、费用预算或远端任务取消保证，详见worker指南。
 
 适配 `POST <base_url>/chat/completions`、messages、`response_format={"type":"json_object"}` 与 choices[0].message.content。第三方兼容性并不由OpenAI文档保证；不支持此子集的服务会失败关闭，不静默删掉保护参数重试。本次未配置真实生成服务凭据，**真实LLM端到端、服务商模型质量/费用尚未验证**；已验证的是真实向量模型、真实本地HTTP和适配层确定性故障契约。
 
@@ -143,7 +147,7 @@ python -m uvicorn compliance_rag.api:app --host 127.0.0.1 --port 8000 --workers 
 - 原始文本和检索结果存本地，未加密；文件目录/备份权限须由运行者保障。
 - trace只保存ID、revision、状态/原因、检索/生成模式、候选/引用数量及耗时，保留最近1000条；追踪不是不可篡改审计。
 - 每库最多32来源、2000块、8MiB提交文本；输入1MiB、HTTP2MiB/4096帧、问题500字符、top_k≤5、上下文总6000字符。字符限制不等于token预算；BGE另按真实分词器512 token检查，超限拒绝而不静默截断。
-- API已有静态角色、持久来源读ACL与单进程额度。没有租户命名空间、段落权限或真实IdP；来源管理员可看全库。标准版本过滤**不是来源授权**。仅单worker回环，后续需IdP/操作审计、硬截止worker和持久任务恢复。CLI/Python本地路径不走HTTP权限和额度，直接库调用者须可信。
+- API已有静态角色、来源读ACL、单进程额度与外部选摘子进程预算；没有租户/段落权限或真实IdP，管理员可看全库。版本过滤**不是授权**。仍需全请求资源隔离/持久任务恢复/操作审计；仅单worker回环，可信CLI/Python路径不走HTTP权限和额度。标准CLI生成工厂同样使用新worker，自定义注入生成器需自行保证预算。
 
 ## 参考与许可
 
