@@ -4,6 +4,8 @@
 
 Windows/Python3.12.8完整 **385项测试通过**（76.76秒）：原330项保留，新增55项；pip check无依赖冲突。应用0.7.0，未新增依赖，不改schema3/解析器0.1.0/ETag或线上检索生成策略。
 
+[功能提交CI](https://github.com/carb6661/compliance-rag-assistant/actions/runs/41979010024)对应`e9819db7f84e04fa403191b00cebb19cb119b00e`：Windows/Linux × Python3.11/3.12/3.13六组全部成功，逐项日志均385 passed、pip check通过、原维护/权限/worker演示通过；质量诊断日志均明确`quality_gate: FAILED`及相同6题清单。这是实现/报告复现成功，不是问答质量门禁通过。另实际启动3个本地CLI进程运行run/score/compare，均退出3，run报告与固定JSON一致；观测/临时库未发布。
+
 - 通过真实SQLite入库和RagService运行4份新原创合成资料、18题（10正例/8负例）。[BM25逐题报告](../examples/evaluation/quote-quality.json)全事实检索10/10、完整事实引用10/10，无答案语义拒答2/8、6题返回不充分原文、无操作性拒答、无非法响应。质量门禁**FAILED**，CLI `run --gate`实际退出3且保留报告，不宣称修复了线上拒答。
 - 真实本地512维BGE在禁止socket connect/DNS条件下重跑同18题，使用已准备权重，未下载；[Dense](../examples/evaluation/quote-quality-dense.json)/[Hybrid](../examples/evaluation/quote-quality-hybrid.json)同样10/10、10/10、2/8与6题失败，记录实际embedding identity。生成模式均extractive，本轮未调用真实LLM；基础CI不装可选模型/下载权重。
 - 新评分回归覆盖：gold不进入目标AskRequest且scope深拷贝；离线模式即使有启用外传环境也不读取生成配置；多事实只引用一项、全拒答、空引用、故障拒答、自由文本附加结论、无本次hit的真实引用均不能刷通过。
