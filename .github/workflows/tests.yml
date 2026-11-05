@@ -32,3 +32,18 @@ jobs:
       - run: python -X utf8 -m compliance_rag.access_demo
       - run: python -X utf8 -m compliance_rag.source_access_demo
       - run: python -X utf8 -m compliance_rag.generation_demo
+      - name: Reproduce quote-quality diagnostic (quality gate is expected to fail)
+        shell: python
+        run: |
+          import json, subprocess, sys
+          from pathlib import Path
+          result = subprocess.run([sys.executable, '-X', 'utf8', '-m', 'compliance_rag.quality_eval',
+              'run', '--out', 'output/quote-quality.json', '--gate'], capture_output=True, text=True, encoding='utf-8')
+          if result.returncode != 3:
+              raise SystemExit('Expected the documented quality-gate failure, not a runtime error or silent pass')
+          report = json.loads(Path('output/quote-quality.json').read_text(encoding='utf-8'))
+          fixture = json.loads(Path('examples/evaluation/quote-quality.json').read_text(encoding='utf-8'))
+          if report != fixture:
+              raise SystemExit('Quality observations changed; review case-level evidence before updating the fixture')
+          print(json.dumps({'reproducibility': 'verified', 'quality_gate': 'FAILED',
+              'metrics': report['metrics'], 'failed_cases': report['gate']['failed_cases']}))

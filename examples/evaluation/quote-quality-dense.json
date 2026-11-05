@@ -1,0 +1,357 @@
+{
+  "format": "quote-quality-report-v1",
+  "suite": "northstar-quote-contract-18-v1",
+  "suite_sha256": "50cc378416b38854dd4c65c3ab2316d1c51c6ec8f4ffe4de05ed90b34c7d74c7",
+  "authorship": "ai-assisted-original-synthetic-not-independent-human-labels",
+  "target": {
+    "id": "compliance-rag-0.7.0",
+    "retrieval": "dense",
+    "generation": "extractive",
+    "embedding_identity": "BAAI/bge-small-zh-v1.5:fastembed-0.9.0:847676ef008f88641a491b50b92b086472e25adcc7b047a7e5a62fbfcc06c173"
+  },
+  "metrics": {
+    "answerable_cases": 10,
+    "unanswerable_cases": 8,
+    "all_facts_retrieved_rate": 1.0,
+    "fact_complete_answer_rate": 1.0,
+    "unanswerable_semantic_refusal_rate": 0.25,
+    "unsupported_answer_cases": 6,
+    "operational_refusal_cases": 0,
+    "invalid_response_cases": 0
+  },
+  "gate": {
+    "policy": "all-positive-facts-and-all-negative-semantic-refusals-with-valid-provenance",
+    "passed": false,
+    "failed_cases": [
+      "n01-algorithm",
+      "n02-format",
+      "n03-camera",
+      "n06-judgement",
+      "n07-partial",
+      "n08-network-algorithm"
+    ]
+  },
+  "cases": [
+    {
+      "id": "p01-retention",
+      "category": "fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 1,
+      "retrieved_facts": [
+        "retention"
+      ],
+      "quoted_facts": [
+        "retention"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "p02-fields",
+      "category": "fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 1,
+      "retrieved_facts": [
+        "fields"
+      ],
+      "quoted_facts": [
+        "fields"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "p03-retention-review",
+      "category": "multi-fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 2,
+      "retrieved_facts": [
+        "retention",
+        "review"
+      ],
+      "quoted_facts": [
+        "retention",
+        "review"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "p04-exit",
+      "category": "fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 1,
+      "retrieved_facts": [
+        "alarm"
+      ],
+      "quoted_facts": [
+        "alarm"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "p05-visitor",
+      "category": "fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 1,
+      "retrieved_facts": [
+        "escort"
+      ],
+      "quoted_facts": [
+        "escort"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "p06-previous",
+      "category": "fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 1,
+      "retrieved_facts": [
+        "retention"
+      ],
+      "quoted_facts": [
+        "retention"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "p07-level-two",
+      "category": "fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 1,
+      "retrieved_facts": [
+        "retention"
+      ],
+      "quoted_facts": [
+        "retention"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "p08-network",
+      "category": "fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 1,
+      "retrieved_facts": [
+        "retention"
+      ],
+      "quoted_facts": [
+        "retention"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "p09-time",
+      "category": "multi-fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 2,
+      "retrieved_facts": [
+        "source",
+        "check"
+      ],
+      "quoted_facts": [
+        "source",
+        "check"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "p10-cross-class",
+      "category": "multi-fact",
+      "expected": "answer",
+      "status": "evidence",
+      "fact_count": 2,
+      "retrieved_facts": [
+        "entry",
+        "network"
+      ],
+      "quoted_facts": [
+        "entry",
+        "network"
+      ],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": true,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "n01-algorithm",
+      "category": "related-missing",
+      "expected": "refuse",
+      "status": "evidence",
+      "fact_count": 0,
+      "retrieved_facts": [],
+      "quoted_facts": [],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": false,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": false
+    },
+    {
+      "id": "n02-format",
+      "category": "related-missing",
+      "expected": "refuse",
+      "status": "evidence",
+      "fact_count": 0,
+      "retrieved_facts": [],
+      "quoted_facts": [],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": false,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": false
+    },
+    {
+      "id": "n03-camera",
+      "category": "related-missing",
+      "expected": "refuse",
+      "status": "evidence",
+      "fact_count": 0,
+      "retrieved_facts": [],
+      "quoted_facts": [],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": false,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": false
+    },
+    {
+      "id": "n04-no-scope",
+      "category": "absent-scope",
+      "expected": "refuse",
+      "status": "refused",
+      "fact_count": 0,
+      "retrieved_facts": [],
+      "quoted_facts": [],
+      "citation_check": "not_applicable",
+      "diagnostics": [],
+      "fact_complete": false,
+      "semantic_refusal": true,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "n05-no-level",
+      "category": "absent-scope",
+      "expected": "refuse",
+      "status": "refused",
+      "fact_count": 0,
+      "retrieved_facts": [],
+      "quoted_facts": [],
+      "citation_check": "not_applicable",
+      "diagnostics": [],
+      "fact_complete": false,
+      "semantic_refusal": true,
+      "operational_refusal": false,
+      "passed": true
+    },
+    {
+      "id": "n06-judgement",
+      "category": "judgement",
+      "expected": "refuse",
+      "status": "evidence",
+      "fact_count": 0,
+      "retrieved_facts": [],
+      "quoted_facts": [],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": false,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": false
+    },
+    {
+      "id": "n07-partial",
+      "category": "partial-missing",
+      "expected": "refuse",
+      "status": "evidence",
+      "fact_count": 0,
+      "retrieved_facts": [],
+      "quoted_facts": [],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": false,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": false
+    },
+    {
+      "id": "n08-network-algorithm",
+      "category": "related-missing",
+      "expected": "refuse",
+      "status": "evidence",
+      "fact_count": 0,
+      "retrieved_facts": [],
+      "quoted_facts": [],
+      "citation_check": "valid",
+      "diagnostics": [],
+      "fact_complete": false,
+      "semantic_refusal": false,
+      "operational_refusal": false,
+      "passed": false
+    }
+  ],
+  "limitations": [
+    "AI-assisted synthetic regression suite; not third-party, human-adjudicated or held-out production evidence.",
+    "Exact annotated phrase coverage for quote-contract answers, not general semantic entailment or compliance truth.",
+    "Target identity is declared; replay cannot attest a real model call, ACL enforcement or absence of local gold-file access."
+  ]
+}

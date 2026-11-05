@@ -3,11 +3,11 @@
 [![Tests](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**0.6：有生成预算与子进程监督的合规资料证据问答。保留来源权限、条件维护、真实向量与精确引用，不作自动测评判定。**
+**0.7：可重放、可逐题比较的事实覆盖与拒答评测，接入已有合规资料RAG。保留来源权限、生成预算与精确引用，不作自动测评判定。**
 
-本轮解决外部生成“持续慢速返回仍长期占槽”的实际缺口：标准服务端生成工厂改用固定子进程，默认45秒墙钟预算，管道读写与监督独立；超时只终止自有worker，确认进程/I/O结束才归还容量，回收不确定时保留隔离名额，不自动重试。详见[生成worker设计、配置、证据与限制](docs/GENERATION_WORKERS.md)。这是生成阶段监督，**不是全API硬截止或OS沙箱**。
+本轮补上“检索命中/引用真实，却没有回答所问事实”的质量诊断：4份新合成资料、18题、来源摘要与逐项事实锚点；标签不传入目标，支持原始响应重放、逐题改进/退化比较和非零质量门禁。实测BM25及真实BGE Dense/Hybrid均完整覆盖10/10有答案题，却只拒答2/8无答案题，**6个相关但不充分的返回仍未解决，质量门禁明确失败**。详见[评测设计、完整命令、分母与限制](docs/QUALITY_EVALUATION.md)及[逐题报告](examples/evaluation/quote-quality.json)。标注由AI辅助原创，非第三方人工盲测。
 
-0.3条件维护、0.4令牌/角色/任务租约、0.5持久来源ACL继续保留。0.6不改schema3或两类ETag；旧于0.5的数据库按[来源升级指南](docs/SOURCE_AUTHORIZATION.md)处理。普通查询默认须获来源授权，正文更新后重审；保持单worker回环，无真实IdP、租户命名空间、全请求硬截止或费用预算。
+0.3条件维护、0.4令牌/角色/任务租约、0.5持久来源ACL、0.6固定子进程生成预算继续保留。0.7仅新增本地质量工具，不改线上问答策略、schema3或两类ETag；旧于0.5的数据库按[来源升级指南](docs/SOURCE_AUTHORIZATION.md)处理。普通查询默认须获来源授权，正文更新后重审；保持单worker回环，无真实IdP、租户命名空间、全请求硬截止或费用预算。生成预算仍[只限外部选摘阶段](docs/GENERATION_WORKERS.md)，不是全API硬截止或OS沙箱。
 
 使用 Python、FastAPI、SQLite 和 LangChain Document，在原有标题层级入库上补齐资料导入、持久查询、更新/删除、范围过滤、BM25/真实中文向量/RRF检索、证据回答、引用校验与追踪。适合安全工程师先定位资料依据、再人工核验的私有本地工作流。
 
@@ -15,6 +15,7 @@
 
 ## 本次做深了什么
 
+- 质量指标区分检索、完整事实引用和无答案拒答：空引用不算引用有效，超时/未配置模型不算成功识别无答案；报告绑定来源与标签指纹，逐题比较防止总分掩盖退化。
 - 生成阶段有预算和回收：持续来字节也不能无限延长等待；真实子进程/本地协议实验验证超时、回收、取消及下一请求恢复，不把它冒充真实LLM。
 - 资料级权限接入真实检索：SQL阶段排除未授权块及向量，BM25统计也限于授权语料；同标准/版本/级别的不同文件可分别授权。
 - 权限与内容生命周期绑定：令牌轮换不继承、正文/配置变更清空读者、删除级联；授权CAS及修订复核覆盖旧授权和中途撤权。
@@ -25,7 +26,7 @@
 - 不用随机向量冒充语义：真实运行BGE-small-zh ONNX，模型及分词器摘要绑定索引，超512 token拒绝静默截断。
 - 不只展示成功：20问开发集保留“相关但缺少事实”的拒答失败，混合检索也没有被包装成必然优于Dense。
 
-详细入口：[生成预算与回收](docs/GENERATION_WORKERS.md) · [来源授权](docs/SOURCE_AUTHORIZATION.md) · [令牌启动](docs/ACCESS_CONTROL.md) · [实际运行与模型接入](docs/RAG_GUIDE.md) · [背景/难点/方案/亮点/简历模板](docs/PROJECT_STORY.md) · [worker证据](examples/evaluation/generation-worker.json) · [验证记录](docs/VALIDATION.md)
+详细入口：[事实覆盖/拒答评测](docs/QUALITY_EVALUATION.md) · [生成预算与回收](docs/GENERATION_WORKERS.md) · [来源授权](docs/SOURCE_AUTHORIZATION.md) · [令牌启动](docs/ACCESS_CONTROL.md) · [实际运行与模型接入](docs/RAG_GUIDE.md) · [背景/难点/方案/亮点/简历模板](docs/PROJECT_STORY.md) · [验证记录](docs/VALIDATION.md)
 
 ### 先验证一个完整业务流程
 
@@ -45,6 +46,8 @@ python -X utf8 -m compliance_rag.generation_demo
 维护者演示不代表普通用户能查整库。reader/analyst使用前，按[来源权限指南](docs/SOURCE_AUTHORIZATION.md)审阅正文，再用 `examples/manage_source_access.py`读取ACL并携带access_etag设置读者；未授权返回no_evidence，合法内容更新后也需重审。
 
 ### 已测结果与没有解决的问题
+
+新18题回归集（10有答案/8无答案，与下方旧开发集不同）：BM25、真实BGE Dense及Hybrid均全事实检索10/10、完整事实引用10/10、无答案拒答2/8。固定报告：[BM25](examples/evaluation/quote-quality.json)、[Dense](examples/evaluation/quote-quality-dense.json)、[Hybrid](examples/evaluation/quote-quality-hybrid.json)。`python -X utf8 -m compliance_rag.quality_eval run --gate`实际退出3；**绿色Tests验证复现，不等于质量门禁通过**。没有真实LLM生成质量或独立人工标注效果结论。
 
 在12块原创资料、20个手写开发问题上（16可回答、4不可回答；非独立测试集）：
 
@@ -275,11 +278,13 @@ compliance_rag/
   rag_api.py      知识库/检索/问答/追踪接口
   rag_cli.py      持久知识库CLI与评测入口
   evaluation.py   20问合成对照评测
+  quality_eval.py 来源绑定事实/拒答评分、原始响应重放和逐题比较
 examples/
   standards/      原创合成标准
   invalid/        结构缺陷样例
   repaired/       结构修复样例
   expected/       精确可重现输出
+  quality/        4份新合成手册、18题、来源摘要与逐项事实锚点
 tests/            溯源、作用域、切分、CLI和API测试
 docs/             使用、威胁模型及验证记录
 ```

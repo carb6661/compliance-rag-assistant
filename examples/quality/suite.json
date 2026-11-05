@@ -1,0 +1,429 @@
+{
+  "format": "quote-eval-v1",
+  "id": "northstar-quote-contract-18-v1",
+  "authorship": "ai-assisted-original-synthetic-not-independent-human-labels",
+  "standard_name": "虚构北辰资料审阅手册",
+  "sources": [
+    {
+      "file": "current-physical.md",
+      "sha256": "16daf70880181899f9ab91242368c552021019a96adbf43924d1b86533a94887",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      }
+    },
+    {
+      "file": "previous-physical.md",
+      "sha256": "c89ac0bd91247f1d3fa747070fe3719f4355e51e9fc10eb1be899a494298686a",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v1",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      }
+    },
+    {
+      "file": "level-two.md",
+      "sha256": "a951697bb30c811523a6f0ae8029f3ba974f300e9d2c48e0dc02c1d63fb2fd01",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第二级",
+        "security_class": "安全物理环境"
+      }
+    },
+    {
+      "file": "network.md",
+      "sha256": "49aefe3603bed57af9206f8e3e55b6e268475cd0d4efe030d2a8309bf8c94b11",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全通信网络"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "p01-retention",
+      "question": "进入记录保留多久？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "answer",
+      "category": "fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "retention",
+          "any_of": [
+            {
+              "source": "current-physical.md",
+              "quote": "进入记录保留210天"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p02-fields",
+      "question": "进入记录包含哪些记录字段？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "answer",
+      "category": "fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "fields",
+          "any_of": [
+            {
+              "source": "current-physical.md",
+              "quote": "访问编号、进入时刻和离开时刻"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p03-retention-review",
+      "question": "进入记录保留多久，由谁按什么周期复核？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "answer",
+      "category": "multi-fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "retention",
+          "any_of": [
+            {
+              "source": "current-physical.md",
+              "quote": "进入记录保留210天"
+            }
+          ]
+        },
+        {
+          "id": "review",
+          "any_of": [
+            {
+              "source": "current-physical.md",
+              "quote": "独立复核员每14天复核一次进入记录"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p04-exit",
+      "question": "紧急出口开启后触发什么告警？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "answer",
+      "category": "fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "alarm",
+          "any_of": [
+            {
+              "source": "current-physical.md",
+              "quote": "触发本地声光告警"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p05-visitor",
+      "question": "授权访客进入机房时如何陪同？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "answer",
+      "category": "fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "escort",
+          "any_of": [
+            {
+              "source": "current-physical.md",
+              "quote": "由值班人员全程陪同"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p06-previous",
+      "question": "进入记录保留多久？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v1",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "answer",
+      "category": "fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "retention",
+          "any_of": [
+            {
+              "source": "previous-physical.md",
+              "quote": "进入记录保留45天"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p07-level-two",
+      "question": "进入记录保留多久？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第二级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "answer",
+      "category": "fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "retention",
+          "any_of": [
+            {
+              "source": "level-two.md",
+              "quote": "进入记录保留90天"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p08-network",
+      "question": "网络日志保留多久？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全通信网络"
+      },
+      "expect": "answer",
+      "category": "fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "retention",
+          "any_of": [
+            {
+              "source": "network.md",
+              "quote": "网络日志保留120天"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p09-time",
+      "question": "网络设备使用什么时间源，多久检查时间同步？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全通信网络"
+      },
+      "expect": "answer",
+      "category": "multi-fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "source",
+          "any_of": [
+            {
+              "source": "network.md",
+              "quote": "内部时间源time.training.invalid"
+            }
+          ]
+        },
+        {
+          "id": "check",
+          "any_of": [
+            {
+              "source": "network.md",
+              "quote": "每10天检查一次时间同步状态"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p10-cross-class",
+      "question": "进入记录与网络日志分别保留多久？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": null
+      },
+      "expect": "answer",
+      "category": "multi-fact",
+      "rationale": "按指定版本、级别和安全类的原创资料逐项标注；所有必要事实均须出现在有效引用内。",
+      "facts": [
+        {
+          "id": "entry",
+          "any_of": [
+            {
+              "source": "current-physical.md",
+              "quote": "进入记录保留210天"
+            }
+          ]
+        },
+        {
+          "id": "network",
+          "any_of": [
+            {
+              "source": "network.md",
+              "quote": "网络日志保留120天"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "n01-algorithm",
+      "question": "进入记录必须使用哪种加密算法？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "refuse",
+      "category": "related-missing",
+      "rationale": "有进入记录留存要求，无加密算法；主题相关不能充当算法依据。",
+      "facts": []
+    },
+    {
+      "id": "n02-format",
+      "question": "进入记录导出的文件格式是什么？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "refuse",
+      "category": "related-missing",
+      "rationale": "原文没有导出格式，不能由字段定义推断CSV或JSON。",
+      "facts": []
+    },
+    {
+      "id": "n03-camera",
+      "question": "入口监控图像保留多久？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "refuse",
+      "category": "related-missing",
+      "rationale": "进入记录不是监控图像，不能迁移210天到另一资产。",
+      "facts": []
+    },
+    {
+      "id": "n04-no-scope",
+      "question": "进入记录保留多久？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v3",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "refuse",
+      "category": "absent-scope",
+      "rationale": "没有v3资料，不得借用v2。",
+      "facts": []
+    },
+    {
+      "id": "n05-no-level",
+      "question": "进入记录保留多久？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第五级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "refuse",
+      "category": "absent-scope",
+      "rationale": "没有第五级资料，不得借用二级或三级。",
+      "facts": []
+    },
+    {
+      "id": "n06-judgement",
+      "question": "这些进入记录制度是否说明我们已经通过等保测评？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "refuse",
+      "category": "judgement",
+      "rationale": "制度资料不包含组织实施证据和正式测评结论，本产品也不出具测评判定。",
+      "facts": []
+    },
+    {
+      "id": "n07-partial",
+      "question": "进入记录保留多久以及使用哪种加密算法？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全物理环境"
+      },
+      "expect": "refuse",
+      "category": "partial-missing",
+      "rationale": "一问两项，只有留存事实，缺少算法依据；本套要求完整回答或明确拒答，不把部分引用算完整。",
+      "facts": []
+    },
+    {
+      "id": "n08-network-algorithm",
+      "question": "网络日志必须使用哪种签名算法？",
+      "scope": {
+        "standard_code": "TRAINING-NORTHSTAR",
+        "edition": "v2",
+        "security_level": "第三级",
+        "security_class": "安全通信网络"
+      },
+      "expect": "refuse",
+      "category": "related-missing",
+      "rationale": "网络日志只有期限与字段，没有签名算法。",
+      "facts": []
+    }
+  ]
+}

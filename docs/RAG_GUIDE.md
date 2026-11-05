@@ -1,8 +1,10 @@
-# 实际使用：持久知识库与可核验问答（0.6）
+# 实际使用：持久知识库与可核验问答（0.7）
 
 0.2补齐业务闭环，0.3加入来源条件维护，0.4加入令牌角色/单进程额度，0.5加入持久来源读ACL及更新重审。先按[令牌启动](ACCESS_CONTROL.md)配置HTTP，再按[来源权限与schema3升级](SOURCE_AUTHORIZATION.md)审阅授权；写入继续使用[条件合同](CONDITIONAL_WRITES.md)。未配置API503锁定、缺认证401、角色不足403；查询者没有来源授权时返回no_evidence。仍不声称自动完成等保测评。
 
 0.6不改数据库，标准外部生成默认经固定子进程，加入[生成阶段墙钟预算与回收](GENERATION_WORKERS.md)。不是全请求硬时限；真实服务未配置时，可用不连接外部模型的generation_demo验证本地协议/超时/恢复。
+
+0.7新增[事实覆盖/拒答评测工具](QUALITY_EVALUATION.md)，不改线上策略或schema。`python -X utf8 -m compliance_rag.quality_eval run --gate`在18题新合成回归集实际退出3：完整事实引用10/10，但无答案只拒2/8。可用`--responses output/new-responses.json`保留本地观测，再用score重放或compare逐题比较；输出文件不可覆盖。Tests通过表示可复现，不表示这个质量门禁已通过。
 
 ## 1. 无密钥即可验证业务闭环
 
