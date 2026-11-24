@@ -9,6 +9,7 @@ from .generation import AskRequest, RagService, generator_from_env
 from .knowledge import KnowledgeStore
 from .parser import InputError
 from .conditions import WriteCondition, WriteRejected
+from .audit import AuditCapacityError
 
 
 def main(argv=None):
@@ -80,6 +81,9 @@ def main(argv=None):
                 result = RagService(store, generator_from_env()).ask(request)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 1 if result.get("status") == "refused" else (4 if result.get("status") == "not_found" else 0)
+    except AuditCapacityError:
+        print(json.dumps({"error": "audit_capacity_exhausted; mutation rolled back; see docs/MAINTENANCE_AUDIT.md"}))
+        return 5
     except WriteRejected as error:
         print(json.dumps({"error": error.code, "http_status": error.status,
             "advice": "Read and review the current source before retrying; do not retry automatically."}))

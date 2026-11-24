@@ -9,6 +9,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse
 
 from .models import IngestConfig, MAX_BYTES, StrictModel
+from . import __version__
 from .parser import InputError, parse_markdown, source_label
 from .generation import strict_json
 from .access import AccessBoundary, AccessPolicy, AccessRejected, Admission, work
@@ -80,7 +81,7 @@ async def validation_error(request, exc):
 
 @router.get("/health")
 def health(request: Request):
-    return {"status": "ok", "phase": "supervised-generation-and-evidence-qa", "version": "0.6.0",
+    return {"status": "ok", "phase": "audited-maintenance-and-evidence-qa", "version": __version__,
             "access_configured": bool(request.app.state.access_policy.principals)}
 
 
@@ -107,7 +108,7 @@ def parse_payload(request):
 
 def create_app(policy=None):
     policy = AccessPolicy.from_env() if policy is None else policy
-    app = FastAPI(title="Compliance RAG Assistant · 可溯源证据问答", version="0.6.0",
+    app = FastAPI(title="Compliance RAG Assistant · 可溯源证据问答", version=__version__,
                   docs_url=None, redoc_url=None)
     app.state.rag_service = None
     app.state.access_policy = policy

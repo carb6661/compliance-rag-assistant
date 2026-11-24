@@ -75,12 +75,19 @@ def main():
                                       headers={"If-Match": updated.headers["etag"]})
                 empty = client.post("/v1/ask",json=payload)
                 assert empty.json()["status"] == "refused" and not empty.json()["citations"]
+                from .audit_export import collect
+                history = collect(client)
+                assert len(history["events"]) == 4
+                assert [e["action"] for e in history["events"]] == [
+                    "source_created", "source_access_replaced", "source_replaced", "source_deleted"]
+                assert all(e["actor_kind"] == "api" and e["actor_id"] == "maintainer" for e in history["events"])
                 print(json.dumps({"transport":"real-loopback-http", "real_llm":False,
                     "statuses":[indexed.status_code,response.status_code,trace.status_code,removed.status_code,empty.status_code],
                     "indexed_chunks":6,"answer_contains":"180天", "after_delete":"no_evidence",
                     "conditional_statuses":[missing.status_code,updated.status_code,stale.status_code,stale_delete.status_code],
                     "access_statuses":[unauthorized.status_code,denied.status_code,reader_ask.status_code,reader_llm.status_code],
                     "source_acl":{"before_grant":"no_evidence","after_grant":"evidence","after_replacement":"no_evidence"},
+                    "maintenance_audit":{"events_after_deletion":4,"actor_from_server":True,"exporter_real_http":True},
                     "latest_source_contains":"181天", "etag_changed":True}, ensure_ascii=False))
         finally:
             server.should_exit = True

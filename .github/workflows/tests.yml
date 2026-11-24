@@ -32,6 +32,7 @@ jobs:
       - run: python -X utf8 -m compliance_rag.access_demo
       - run: python -X utf8 -m compliance_rag.source_access_demo
       - run: python -X utf8 -m compliance_rag.generation_demo
+      - run: python -X utf8 -m compliance_rag.audit_demo
       - name: Reproduce quote-quality diagnostic (quality gate is expected to fail)
         shell: python
         run: |
@@ -43,6 +44,10 @@ jobs:
               raise SystemExit('Expected the documented quality-gate failure, not a runtime error or silent pass')
           report = json.loads(Path('output/quote-quality.json').read_text(encoding='utf-8'))
           fixture = json.loads(Path('examples/evaluation/quote-quality.json').read_text(encoding='utf-8'))
+          from compliance_rag import __version__
+          if report['target']['id'] != f'compliance-rag-{__version__}':
+              raise SystemExit('Unexpected runtime target version')
+          fixture['target']['id'] = report['target']['id']  # Keep historical fixture; compare all substantive fields.
           if report != fixture:
               raise SystemExit('Quality observations changed; review case-level evidence before updating the fixture')
           print(json.dumps({'reproducibility': 'verified', 'quality_gate': 'FAILED',

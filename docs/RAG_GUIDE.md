@@ -1,4 +1,6 @@
-# 实际使用：持久知识库与可核验问答（0.7）
+# 实际使用：持久知识库与可核验问答（0.8）
+
+0.8新增[同事务维护记录与分页导出](MAINTENANCE_AUDIT.md)，首次打开旧库迁移到schema4，不改原来源/ACL ETag、revision或向量；先停全部旧写者并私有备份，旧历史不回填。`python -X utf8 -m compliance_rag.audit_demo`无需凭据即可验证临时合成实验；真实本机API的维护者可用`python -X utf8 -m compliance_rag.audit_export --out output/private-audit-new.json`导出固定快照，客户端令牌仍从环境加载。10,000事件上限后实际维护HTTP503/CLI退出5，读/导出可继续；没有自动清理，不要直接删除日志绕过上限。以下0.5—0.7的权限/生成/评测合同继续保留。
 
 0.2补齐业务闭环，0.3加入来源条件维护，0.4加入令牌角色/单进程额度，0.5加入持久来源读ACL及更新重审。先按[令牌启动](ACCESS_CONTROL.md)配置HTTP，再按[来源权限与schema3升级](SOURCE_AUTHORIZATION.md)审阅授权；写入继续使用[条件合同](CONDITIONAL_WRITES.md)。未配置API503锁定、缺认证401、角色不足403；查询者没有来源授权时返回no_evidence。仍不声称自动完成等保测评。
 

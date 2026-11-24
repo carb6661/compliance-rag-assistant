@@ -12,8 +12,9 @@ from .knowledge import KnowledgeStore, SearchRequest
 from .models import IngestConfig, MAX_BYTES, StrictModel
 from .parser import InputError, source_label
 from .conditions import WriteRejected, from_headers
-from .access import work, read_identity
+from .access import work, read_identity, audit_actor
 from .authorization import ReaderGrant
+from .audit import AuditPageRequest, AuditCapacityError, AuditCursorError
 
 router = APIRouter()
 LOCK = threading.Lock()
@@ -74,7 +75,8 @@ def inventory(request: Request):
 def ingest(payload: IngestRequest, request: Request):
     with work(request):
         condition = from_headers(request.headers)
-        result = service(request).store.ingest(payload.text, payload.source_name, payload.config, condition=condition)
+        result = service(request).store.ingest(payload.text, payload.source_name, payload.config,
+                                               condition=condition, actor=audit_actor(request))
         return JSONResponse(result, headers={"ETag": result["source_etag"], "Cache-Control": "no-store"})
 
 
@@ -91,7 +93,7 @@ def source(payload: DeleteRequest, request: Request):
 def remove(payload: DeleteRequest, request: Request):
     with work(request):
         condition = from_headers(request.headers, delete=True)
-        return JSONResponse(service(request).store.delete(payload.source_name, condition=condition),
+        return JSONResponse(service(request).store.delete(payload.source_name, condition=condition, actor=audit_actor(request)),
                             headers={"Cache-Control":"no-store"})
 
 
@@ -127,8 +129,14 @@ def replace_access(payload: AccessUpdateRequest, request: Request):
         if any(reader not in available for reader in payload.readers):
             raise InputError("readers must be configured query principals")
         grants = [ReaderGrant(reader, available[reader].token_sha256) for reader in payload.readers]
-        result = service(request).store.replace_access(payload.source_name, grants, condition=condition)
+        result = service(request).store.replace_access(payload.source_name, grants, condition=condition, actor=audit_actor(request))
         return JSONResponse(result, headers={"ETag": result["access_etag"]})
+
+
+@router.post("/v1/audit/events")
+def audit_events(payload: AuditPageRequest, request: Request):
+    with work(request):
+        return service(request).store.audit_page(payload)
 
 
 @router.get("/v1/traces/{trace_id}")
@@ -146,6 +154,16 @@ def read_trace(trace_id, request):
 
 def attach(app):
     app.include_router(router)
+
+    @app.exception_handler(AuditCursorError)
+    def invalid_audit_cursor(request, error):
+        return JSONResponse({"error": "audit_snapshot_mismatch; restart the export from the first page"},
+                            status_code=409, headers={"Cache-Control": "no-store"})
+
+    @app.exception_handler(AuditCapacityError)
+    def audit_full(request, error):
+        return JSONResponse({"error": "audit_capacity_exhausted; mutation rolled back; administrator action required"},
+                            status_code=503, headers={"Cache-Control": "no-store"})
 
     @app.exception_handler(WriteRejected)
     def rejected_write(request, error):

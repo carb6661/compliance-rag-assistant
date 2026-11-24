@@ -1,0 +1,37 @@
+{
+  "format": "maintenance-audit-demo-v1",
+  "transport": "in-process-asgi+real-sqlite",
+  "real_llm": false,
+  "data": "original-synthetic-policy",
+  "events_after_delete_and_restart": 4,
+  "actions": [
+    "source_created",
+    "source_access_replaced",
+    "source_replaced",
+    "source_deleted"
+  ],
+  "revisions": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "api_actor_from_authenticated_lease": true,
+  "replacement_reader_grants_cleared": 1,
+  "audit_read_statuses": [
+    401,
+    403,
+    200
+  ],
+  "stale_write_status": 412,
+  "unchanged_write_added_events": 0,
+  "audit_insert_failure_status": 503,
+  "audit_failure_source_and_history_unchanged": true,
+  "paginated_snapshot_sequences": [
+    1,
+    2
+  ],
+  "later_commit_excluded_from_snapshot": true,
+  "raw_text_and_tokens_in_event": false,
+  "limits": "Committed maintenance changes only; no rejected-attempt log, IdP, WORM or response-delivery guarantee."
+}

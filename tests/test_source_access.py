@@ -375,7 +375,7 @@ def test_schema_two_upgrade_preserves_chunks_content_etags_and_denies_readers(tm
     with store.connect() as db:
         assert [tuple(row) for row in db.execute("SELECT * FROM chunks ORDER BY chunk_id")] == chunks
         assert db.execute("SELECT count(*) FROM chunks").fetchone()[0] == 12
-        assert db.execute("SELECT value FROM settings WHERE key='schema'").fetchone()[0] == "3"
+        assert db.execute("SELECT value FROM settings WHERE key='schema'").fetchone()[0] == "4"
 
 
 def test_schema_two_migration_failure_is_atomic(tmp_path, monkeypatch):

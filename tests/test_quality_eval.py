@@ -40,7 +40,11 @@ def test_actual_baseline_exposes_valid_quotes_without_answers(suite, observation
         "operational_refusal_cases": 0, "invalid_response_cases": 0}
     assert report["gate"]["passed"] is False
     assert all(r["citation_check"] == "valid" for r in report["cases"] if not r["passed"])
-    assert report == json.loads(Path("examples/evaluation/quote-quality.json").read_text(encoding="utf-8"))
+    historical = json.loads(Path("examples/evaluation/quote-quality.json").read_text(encoding="utf-8"))
+    from compliance_rag import __version__
+    assert report["target"]["id"] == f"compliance-rag-{__version__}"
+    historical["target"]["id"] = report["target"]["id"]
+    assert report == historical  # Preserve the original 0.7 observation and all substantive checks.
 
 
 def test_oracle_annotations_never_cross_request_boundary(suite):

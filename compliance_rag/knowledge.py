@@ -15,6 +15,7 @@ from .retrieval import rank, unit_vector
 from .conditions import WriteCondition, WriteRejected, require_condition
 from .parser import sha
 from .authorization import ReadIdentity, validated_grants
+from . import audit
 
 
 class Scope(StrictModel):
@@ -72,7 +73,7 @@ class KnowledgeStore:
             db.execute("INSERT OR IGNORE INTO settings VALUES ('dimension',?)", (str(self.dimension),))
             db.execute("INSERT OR IGNORE INTO settings VALUES ('schema','1')")
             values = dict(db.execute("SELECT key,value FROM settings"))
-            if values["embedding"] != self.identity or values["dimension"] != str(self.dimension) or values["schema"] not in ("1", "2", "3"):
+            if values["embedding"] != self.identity or values["dimension"] != str(self.dimension) or values["schema"] not in ("1", "2", "3", "4"):
                 raise InputError("index identity/schema mismatch; use a separate database or explicit rebuild")
             if values["schema"] == "1":
                 db.execute("ALTER TABLE sources ADD COLUMN generation INTEGER NOT NULL DEFAULT 0")
@@ -81,6 +82,14 @@ class KnowledgeStore:
                 db.execute("UPDATE settings SET value='2' WHERE key='schema'")
             if values["schema"] in ("1", "2"):
                 self._migrate_source_access(db)
+            if values["schema"] in ("1", "2", "3"):
+                audit.migrate(db)
+            # Existing schema4 must not silently recreate a missing audit ledger.
+            db.execute("SELECT seq,revision,at_utc,actor_kind,actor_id,action,source,before_state,after_state "
+                       "FROM maintenance_events LIMIT 0")
+            floor = db.execute("SELECT value FROM settings WHERE key='audit_start_revision'").fetchone()
+            if floor is None or not 0 <= int(floor[0]) <= self._revision(db):
+                raise InputError("invalid audit history boundary")
             if not {"generation", "access_generation"} <= {row[1] for row in db.execute("PRAGMA table_info(sources)")}:
                 raise InputError("source generation columns are missing")
             if not {"source", "principal_id", "credential_sha256"} <= {row[1] for row in db.execute("PRAGMA table_info(source_grants)")}:
@@ -135,8 +144,9 @@ class KnowledgeStore:
                     "source_sha256": row["source_hash"], "config_sha256": row["config_hash"],
                     "normalized_text": row["normalized_text"]}
 
-    def ingest(self, text, source_name, config=None, *, condition=None):
+    def ingest(self, text, source_name, config=None, *, condition=None, actor=None):
         source_label(source_name)
+        actor = audit.validated_actor(actor)
         condition = require_condition(condition)
         # Cheap preflight avoids parsing/embedding an already stale submission.
         # It is not the commit guard: the transaction repeats the check below.
@@ -167,6 +177,7 @@ class KnowledgeStore:
             count = db.execute("SELECT count(*) FROM chunks WHERE source!=?", (source_name,)).fetchone()[0]
             if remaining[0] >= 32 or remaining[1] + len(text.encode("utf-8")) > 8*1024*1024 or count+len(texts) > 2000:
                 raise InputError("knowledge store source/byte/chunk budget exceeded")
+            before = audit.state(self, db, old)
             cleared = db.execute("SELECT count(*) FROM source_grants WHERE source=?", (source_name,)).fetchone()[0]
             db.execute("DELETE FROM sources WHERE name=?", (source_name,))
             generation = self._revision(db) + 1
@@ -180,6 +191,8 @@ class KnowledgeStore:
                     m["条款标题"], doc.page_content, canonical_json(m), packed))
             db.execute("UPDATE settings SET value=CAST(value AS INTEGER)+1 WHERE key='revision'")
             current = db.execute("SELECT * FROM sources WHERE name=?", (source_name,)).fetchone()
+            audit.append(db, actor=actor, action="source_replaced" if old else "source_created",
+                source=source_name, revision=self._revision(db), before=before, after=audit.state(self, db, current))
             return {"status": "indexed", "revision": self._revision(db), "chunks": len(texts),
                     "source_etag": self._source_etag(current), "source_generation": generation, "reader_grants_cleared": cleared}
 
@@ -187,16 +200,20 @@ class KnowledgeStore:
     def _revision(db):
         return int(db.execute("SELECT value FROM settings WHERE key='revision'").fetchone()[0])
 
-    def delete(self, source_name, *, condition=None):
+    def delete(self, source_name, *, condition=None, actor=None):
         source_label(source_name)
+        actor = audit.validated_actor(actor)
         condition = require_condition(condition, delete=True)
         with self.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             row = db.execute("SELECT * FROM sources WHERE name=?", (source_name,)).fetchone()
             self._check_condition(row, condition)
+            before = audit.state(self, db, row)
             count = db.execute("DELETE FROM sources WHERE name=?", (source_name,)).rowcount
             if count:
                 db.execute("UPDATE settings SET value=CAST(value AS INTEGER)+1 WHERE key='revision'")
+                audit.append(db, actor=actor, action="source_deleted", source=source_name,
+                    revision=self._revision(db), before=before, after=None)
             return {"status": "deleted" if count else "not_found", "revision": self._revision(db)}
 
     def _access_snapshot(self, db, row):
@@ -213,8 +230,9 @@ class KnowledgeStore:
             row = db.execute("SELECT * FROM sources WHERE name=?", (source_name,)).fetchone()
             return self._access_snapshot(db, row) if row else None
 
-    def replace_access(self, source_name, readers, *, condition=None):
+    def replace_access(self, source_name, readers, *, condition=None, actor=None):
         source_label(source_name)
+        actor = audit.validated_actor(actor)
         condition = require_condition(condition, delete=True)
         readers = validated_grants(readers)
         with self.connect() as db:
@@ -227,13 +245,19 @@ class KnowledgeStore:
             after = [(g.principal_id, g.credential_sha256) for g in readers]
             if before == after:
                 return {"status": "unchanged", **current}
+            before_state = audit.state(self, db, row)
             db.execute("DELETE FROM source_grants WHERE source=?", (source_name,))
             db.executemany("INSERT INTO source_grants VALUES (?,?,?)", [(source_name, *g) for g in after])
             generation = self._revision(db) + 1
             db.execute("UPDATE sources SET access_generation=? WHERE name=?", (generation, source_name))
             db.execute("UPDATE settings SET value=? WHERE key='revision'", (str(generation),))
             row = db.execute("SELECT * FROM sources WHERE name=?", (source_name,)).fetchone()
+            audit.append(db, actor=actor, action="source_access_replaced", source=source_name,
+                revision=generation, before=before_state, after=audit.state(self, db, row))
             return {"status": "updated", **self._access_snapshot(db, row)}
+
+    def audit_page(self, request=None):
+        return audit.page(self, request)
 
     def publication_valid(self, search, identity=None):
         if identity is not None and not isinstance(identity, ReadIdentity):

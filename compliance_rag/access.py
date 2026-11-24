@@ -175,7 +175,7 @@ def permitted(principal, method, path):
     maintenance = {("POST", "/v1/parse"), ("GET", "/v1/library"),
                    ("POST", "/v1/library/source"), ("POST", "/v1/library/ingest"),
                    ("POST", "/v1/library/access"), ("POST", "/v1/library/access/update"),
-                   ("POST", "/v1/library/remove"), ("GET", "/openapi.json")}
+                   ("POST", "/v1/library/remove"), ("POST", "/v1/audit/events"), ("GET", "/openapi.json")}
     return ((method, path) in query or (principal.role == "maintainer" and (
         (method, path) in maintenance or (method == "GET" and path.startswith("/v1/traces/")))))
 
@@ -223,6 +223,14 @@ def work(request, *, external=False):
 def read_identity(request):
     principal = request.state.access_lease.principal
     return ReadIdentity(principal.id, principal.token_sha256, principal.role == "maintainer")
+
+
+def audit_actor(request):
+    from .audit import AuditActor
+    principal = request.state.access_lease.principal
+    if principal.role != "maintainer":
+        raise AccessRejected("operation_forbidden", 403)
+    return AuditActor("api", principal.id)
 
 
 def initialize(directory):

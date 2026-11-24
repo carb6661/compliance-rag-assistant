@@ -3,11 +3,13 @@
 [![Tests](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/carb6661/compliance-rag-assistant/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**0.7：可重放、可逐题比较的事实覆盖与拒答评测，接入已有合规资料RAG。保留来源权限、生成预算与精确引用，不作自动测评判定。**
+**0.8：有事务维护证据的合规资料RAG。来源/授权变更与审计记录一起提交，支持固定快照分页及本地导出；不作自动测评判定。**
 
-本轮补上“检索命中/引用真实，却没有回答所问事实”的质量诊断：4份新合成资料、18题、来源摘要与逐项事实锚点；标签不传入目标，支持原始响应重放、逐题改进/退化比较和非零质量门禁。实测BM25及真实BGE Dense/Hybrid均完整覆盖10/10有答案题，却只拒答2/8无答案题，**6个相关但不充分的返回仍未解决，质量门禁明确失败**。详见[评测设计、完整命令、分母与限制](docs/QUALITY_EVALUATION.md)及[逐题报告](examples/evaluation/quote-quality.json)。标注由AI辅助原创，非第三方人工盲测。
+本轮解决“资料/ACL已改，维护证据却没写成功”的数据治理缺口：4类真实变更在同一SQLite事务写事件，API操作者取自已认证身份，删除来源后事件保留；审计失败回滚资料/修订/事件。新增仅维护者可读的分页API和有界本地导出；440项测试，真实回环HTTP与SQLite故障/并发验证。详见[设计、运行、schema4升级及限制](docs/MAINTENANCE_AUDIT.md)和[固定合成证据](examples/evaluation/maintenance-audit.json)。这是已提交维护记录，**不是拒绝尝试日志、IdP或不可篡改审计**。
 
-0.3条件维护、0.4令牌/角色/任务租约、0.5持久来源ACL、0.6固定子进程生成预算继续保留。0.7仅新增本地质量工具，不改线上问答策略、schema3或两类ETag；旧于0.5的数据库按[来源升级指南](docs/SOURCE_AUTHORIZATION.md)处理。普通查询默认须获来源授权，正文更新后重审；保持单worker回环，无真实IdP、租户命名空间、全请求硬截止或费用预算。生成预算仍[只限外部选摘阶段](docs/GENERATION_WORKERS.md)，不是全API硬截止或OS沙箱。
+0.3条件维护、0.4角色/租约、0.5来源ACL、0.6生成预算和0.7事实评测继续保留。0.8升级schema4，旧库不回填虚构历史，原ETag/ACL/向量/revision在迁移中保持；须先停止旧写者并私有备份，详见升级指南。事件上限10,000，满后拒绝实际写入，读/导出仍可用，无自动归档清理。普通查询仍须来源授权、正文更新后重审，单worker回环，无真实IdP/租户/全请求硬截止/费用预算。
+
+0.7新合成18题的事实/拒答合同继续回归：完整事实引用10/10、无答案仅拒2/8，**6题不充分返回和质量门禁失败未被本轮审计功能修复**。[评测方法](docs/QUALITY_EVALUATION.md)及[历史逐题报告](examples/evaluation/quote-quality.json)保留，标注AI辅助原创、非独立人工盲测。真实LLM尚未联调，协议模拟与真实BGE分开报告。
 
 使用 Python、FastAPI、SQLite 和 LangChain Document，在原有标题层级入库上补齐资料导入、持久查询、更新/删除、范围过滤、BM25/真实中文向量/RRF检索、证据回答、引用校验与追踪。适合安全工程师先定位资料依据、再人工核验的私有本地工作流。
 
@@ -15,6 +17,8 @@
 
 ## 本次做深了什么
 
+- 知识维护留下事务证据：新增/替换/删除/授权变更与事件一起提交；日志写失败回滚，提交后断线不伪装成未提交，来源删除不级联擦除历史。
+- 管理历史保持私有、有界、可导出：仅maintainer可读，稳定序号上界隔离后续提交；导出检查游标/字节/页数且不覆盖文件，满额不静默丢日志。
 - 质量指标区分检索、完整事实引用和无答案拒答：空引用不算引用有效，超时/未配置模型不算成功识别无答案；报告绑定来源与标签指纹，逐题比较防止总分掩盖退化。
 - 生成阶段有预算和回收：持续来字节也不能无限延长等待；真实子进程/本地协议实验验证超时、回收、取消及下一请求恢复，不把它冒充真实LLM。
 - 资料级权限接入真实检索：SQL阶段排除未授权块及向量，BM25统计也限于授权语料；同标准/版本/级别的不同文件可分别授权。
@@ -26,7 +30,7 @@
 - 不用随机向量冒充语义：真实运行BGE-small-zh ONNX，模型及分词器摘要绑定索引，超512 token拒绝静默截断。
 - 不只展示成功：20问开发集保留“相关但缺少事实”的拒答失败，混合检索也没有被包装成必然优于Dense。
 
-详细入口：[事实覆盖/拒答评测](docs/QUALITY_EVALUATION.md) · [生成预算与回收](docs/GENERATION_WORKERS.md) · [来源授权](docs/SOURCE_AUTHORIZATION.md) · [令牌启动](docs/ACCESS_CONTROL.md) · [实际运行与模型接入](docs/RAG_GUIDE.md) · [背景/难点/方案/亮点/简历模板](docs/PROJECT_STORY.md) · [验证记录](docs/VALIDATION.md)
+详细入口：[维护审计/分页/导出/升级](docs/MAINTENANCE_AUDIT.md) · [事实评测](docs/QUALITY_EVALUATION.md) · [生成预算](docs/GENERATION_WORKERS.md) · [来源授权](docs/SOURCE_AUTHORIZATION.md) · [令牌启动](docs/ACCESS_CONTROL.md) · [实际运行](docs/RAG_GUIDE.md) · [背景/问题/方案/亮点/简历模板](docs/PROJECT_STORY.md) · [验证记录](docs/VALIDATION.md)
 
 ### 先验证一个完整业务流程
 
@@ -39,6 +43,7 @@ python -X utf8 -m compliance_rag.conditional_demo
 python -X utf8 -m compliance_rag.access_demo
 python -X utf8 -m compliance_rag.source_access_demo
 python -X utf8 -m compliance_rag.generation_demo
+python -X utf8 -m compliance_rag.audit_demo
 ```
 
 以上命令使用临时资料库，自动验证后退出。手动启动API请先按[权限指南](docs/ACCESS_CONTROL.md)在本机初始化随机令牌、加载服务端摘要策略，再用维护令牌运行 `examples/rag_api_client.py`；已有来源即停止且不覆盖。查询v2第三级进入记录返回含“180天”的原文与来源区间，数字只是虚构练习。模型配置仍仅服务端，不公开令牌或真实标准。
@@ -279,6 +284,9 @@ compliance_rag/
   rag_cli.py      持久知识库CLI与评测入口
   evaluation.py   20问合成对照评测
   quality_eval.py 来源绑定事实/拒答评分、原始响应重放和逐题比较
+  audit.py        schema4维护事件、事务写入、固定上界分页
+  audit_export.py 维护者回环API私有导出，原子创建文件
+  audit_demo.py   实际SQLite/ASGI故障、删除重启与分页实验
 examples/
   standards/      原创合成标准
   invalid/        结构缺陷样例
