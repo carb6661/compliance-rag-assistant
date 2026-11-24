@@ -4,6 +4,8 @@
 
 Windows/Python3.12.8完整 **440项测试通过**（55.71秒），原385项按schema4/当前版本合同回归，新增55项。基础pip check无冲突，无新增第三方依赖；应用0.8.0，parser0.1.0不变。只迁移临时夹具，未打开/升级工作区私有资料库。
 
+[最终功能CI](https://github.com/carb6661/compliance-rag-assistant/actions/runs/45423348444)对应`6c8f826c15e661869a08ad0d72802b0eb84e9fa7`：Windows/Linux × Python3.11/3.12/3.13六组全部成功，逐项日志均440 passed、pip check通过，真实HTTP/新audit_demo及旧业务演示通过。18题诊断仍明确quality_gate=FAILED及相同6题，测试绿色不代表回答质量通过。此前CI临时脚本导入失败已修复，未将取消的任务记为成功；默认导出页大小也已改为100以匹配默认准入额度，专项55项及真实HTTP复核通过。
+
 - 实际SQLite/ASGI固定实验：创建→授权→替换清空1读者→删除后重开保留4事件，revision1..4、API actor来自服务端认证。读取401/403/200；旧标签412、no-op无事件。SQLite trigger在事件插入处ABORT时HTTP503，来源/ETag/revision/历史不变，解除故障后删除成功。[固定JSON](../examples/evaluation/maintenance-audit.json)无随机令牌/ETag/私有路径/原文。
 - 四类变更在event插入前后故障，逐行快照核验sources/chunks/ACL/settings/事件/sqlite_sequence全部回滚；8个同旧标签只有1提交/1事件，6个独立来源提交获得唯一顺序revision；8并发争最后事件容量1成功/7失败。满额读/no-op保留，实际写HTTP503/CLI退出5。
 - 维护者专属、no-store、伪造body actor422/伪造头不改变归属、强类型cursor及跨库409；提交后实际ASGI send异常仍保留已提交删除事件。逻辑配置身份不是IdP或自然人认证，没有记录失败尝试。
