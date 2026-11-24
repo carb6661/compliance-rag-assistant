@@ -44,8 +44,9 @@ jobs:
               raise SystemExit('Expected the documented quality-gate failure, not a runtime error or silent pass')
           report = json.loads(Path('output/quote-quality.json').read_text(encoding='utf-8'))
           fixture = json.loads(Path('examples/evaluation/quote-quality.json').read_text(encoding='utf-8'))
-          from compliance_rag import __version__
-          if report['target']['id'] != f'compliance-rag-{__version__}':
+          import tomllib
+          version = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))['project']['version']
+          if report['target']['id'] != f'compliance-rag-{version}':
               raise SystemExit('Unexpected runtime target version')
           fixture['target']['id'] = report['target']['id']  # Keep historical fixture; compare all substantive fields.
           if report != fixture:
