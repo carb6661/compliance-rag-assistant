@@ -365,7 +365,7 @@ def test_exporter_uses_actual_asgi_snapshot(client, store):
     from compliance_rag.audit_export import collect
     for i in range(51):
         put(store, TEXT.replace("180天", f"{500+i}天"), match(store))
-    exported = collect(client)
+    exported = collect(client, page_size=50)
     assert len(exported["events"]) == 52  # Actual 50+2 page traversal, not just first-page copying.
     assert exported["events"] == store.audit_page(audit.AuditPageRequest(limit=100))["events"]
     assert exported["snapshot"] == store.audit_page()["snapshot"]

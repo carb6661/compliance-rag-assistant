@@ -13,10 +13,13 @@ from .__main__ import atomic_write, check_outputs
 from .generation import strict_json
 
 
-def collect(client):
+def collect(client, *, page_size=100):
+    if type(page_size) is not int or page_size not in (50, 100):
+        raise ValueError("unsupported export page size")
     events, snapshot, cursor, last = [], None, None, 0
-    for _ in range(200):  # 50 per page; same documented 10,000-event store boundary.
-        payload = {"limit": 50, "cursor": cursor}
+    for _ in range(10_000 // page_size):
+        # Default 100 needs <=100 requests, below the server's default 120/min quota.
+        payload = {"limit": page_size, "cursor": cursor}
         with client.stream("POST", "/v1/audit/events", json=payload) as response:
             if response.status_code != 200:
                 raise ValueError("audit export HTTP failure")
@@ -37,7 +40,7 @@ def collect(client):
             raise ValueError("audit export snapshot changed")
         snapshot = current
         rows = page["events"]
-        if not isinstance(rows, list) or len(rows) > 50:
+        if not isinstance(rows, list) or len(rows) > page_size:
             raise ValueError("invalid audit row count")
         for event in rows:
             if (not isinstance(event, dict) or type(event.get("seq")) is not int
